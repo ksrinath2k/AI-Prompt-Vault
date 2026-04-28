@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="View, copy, and remix a viral AI prompt with tools, tips, and variations."
+    />
+    <title>Prompt Details | AI Prompt Vault</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="detail">
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand-mark" href="index.html" aria-label="AI Prompt Vault home">
+          <span class="brand-mark__orb"></span>
+          <span>AI Prompt Vault</span>
+        </a>
+        <div class="topbar-actions">
+          <span class="topbar-badge">Premium creator workflow</span>
+          <a class="ghost-link" href="index.html">Back to Library</a>
+        </div>
+      </header>
+
+      <main>
+        <section class="detail-shell" id="promptDetail" aria-live="polite"></section>
+
+        <section class="related-section panel" id="relatedSection">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Keep browsing</p>
+              <h2>Related prompts</h2>
+            </div>
+            <p class="section-copy">
+              More prompt angles for the same trend style, tool stack, or content goal.
+            </p>
+          </div>
+          <div class="prompt-grid prompt-grid--compact" id="relatedPrompts"></div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <p>Save time, move faster, and keep your creative pipeline full.</p>
+        <p>&copy; <span id="currentYear"></span> AI Prompt Vault</p>
+      </footer>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <noscript>
+      <div class="noscript-banner">
+        JavaScript is required to load prompt details and enable clipboard copy.
+      </div>
+    </noscript>
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

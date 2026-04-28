@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Explore viral AI prompts for Instagram reels, image generation, and scroll-stopping video edits."
+    />
+    <title>AI Prompt Vault | Viral AI Prompts & Edits</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="home">
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand-mark" href="index.html" aria-label="AI Prompt Vault home">
+          <span class="brand-mark__orb"></span>
+          <span>AI Prompt Vault</span>
+        </a>
+        <div class="topbar-actions">
+          <span class="topbar-badge">Creator-grade prompt library</span>
+          <a class="ghost-link" href="#bundle-cta">Premium Bundle</a>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero panel">
+          <div class="hero__content">
+            <p class="eyebrow">Built for creators, editors, and prompt collectors</p>
+            <h1>Viral AI Prompts &amp; Edits</h1>
+            <p class="hero__subtitle">
+              Copy the exact prompts behind viral Instagram reels, cinematic AI visuals,
+              and high-retention edit styles.
+            </p>
+
+            <div class="hero__actions">
+              <a class="button button--primary" href="#prompt-library">Explore Prompts</a>
+              <a class="button button--secondary" href="#bundle-cta">Get 100+ Viral Prompts</a>
+            </div>
+
+            <div class="hero__stats" id="heroStats" aria-label="Vault stats">
+              <div class="stat-card">
+                <strong id="promptCount">0</strong>
+                <span>Prompt templates</span>
+              </div>
+              <div class="stat-card">
+                <strong>3</strong>
+                <span>Content categories</span>
+              </div>
+              <div class="stat-card">
+                <strong>1-click</strong>
+                <span>Clipboard copy</span>
+              </div>
+            </div>
+
+            <div class="hero__partners" aria-label="Supported creator stack">
+              <span>Midjourney</span>
+              <span>ChatGPT</span>
+              <span>CapCut</span>
+              <span>Runway</span>
+              <span>Instagram</span>
+            </div>
+          </div>
+
+          <aside class="hero__visual">
+            <div class="hero-showcase">
+              <div class="hero-card glass-card hero-card--primary">
+                <span class="hero-card__badge">Trending Workflow</span>
+                <h2>Reel Hook to AI Visual to Final Edit</h2>
+                <p>
+                  Build a content system that starts with a hook, lands on a prompt,
+                  and converts with a bundle-ready CTA.
+                </p>
+                <ul class="hero-card__steps">
+                  <li><strong>01</strong><span>Pick a viral content angle</span></li>
+                  <li><strong>02</strong><span>Copy the exact winning prompt</span></li>
+                  <li><strong>03</strong><span>Ship variations across formats</span></li>
+                </ul>
+              </div>
+
+              <div class="hero-mini-grid">
+                <div class="mini-panel">
+                  <span class="mini-panel__label">Retention</span>
+                  <strong>Hook-first</strong>
+                  <p>Prompts designed for scrolling platforms, not generic AI demos.</p>
+                </div>
+                <div class="mini-panel">
+                  <span class="mini-panel__label">Monetization</span>
+                  <strong>Bundle-ready</strong>
+                  <p>Built-in premium CTA surfaces for digital product conversion.</p>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="library panel" id="prompt-library">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Prompt library</p>
+              <h2>Explore proven prompt formats</h2>
+            </div>
+            <p class="section-copy">
+              Search by style, platform, or tool stack to find the next prompt worth
+              testing.
+            </p>
+          </div>
+
+          <div class="library-toolbar glass-card">
+            <label class="search-field" for="promptSearch">
+              <span class="search-field__icon" aria-hidden="true">⌕</span>
+              <input
+                id="promptSearch"
+                type="search"
+                placeholder="Search prompts, tools, or themes"
+                autocomplete="off"
+              />
+            </label>
+            <div class="filter-group" id="filterGroup" aria-label="Prompt categories"></div>
+          </div>
+
+          <div class="results-row">
+            <p id="resultsLabel">Loading prompts...</p>
+          </div>
+
+          <div class="prompt-grid" id="promptGrid" aria-live="polite"></div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <p>AI Prompt Vault helps creators turn trends into repeatable prompt systems.</p>
+        <p>&copy; <span id="currentYear"></span> AI Prompt Vault</p>
+      </footer>
+    </div>
+
+    <a
+      class="floating-cta"
+      id="bundle-cta"
+      href="#"
+      data-cta="bundle"
+      aria-label="Get 100 plus viral prompts"
+    >
+      <span>Get 100+ Viral Prompts</span>
+      <span class="floating-cta__arrow">↗</span>
+    </a>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <noscript>
+      <div class="noscript-banner">
+        This site uses a small amount of JavaScript to load prompt cards and enable copy
+        actions.
+      </div>
+    </noscript>
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
