@@ -39,7 +39,7 @@ const prompts = [
     format: "9:16 visual prompt",
     description:
       "A high-energy nightlife visual designed for reels covers, teaser frames, and event promo edits.",
-    image: "/Users/srinath-10489/Documents/AI Prompt Vault/Assets/Young man with cool water.png",
+    image: "/Assets/Young man with cool water.png",
     // createPreview({
       title: "Cinematic Party Scene",
       badge: "Trending Visual",
