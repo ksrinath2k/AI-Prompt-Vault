@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Download Instagram reels plus YouTube videos and Shorts with preview, mobile-friendly actions, and Netlify-ready API routes."
+    />
+    <title>Instagram & YouTube Downloader | AI Prompt Vault</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-page="downloader">
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand-mark" href="index.html" aria-label="AI Prompt Vault home">
+          <span class="brand-mark__orb"></span>
+          <span>AI Prompt Vault</span>
+        </a>
+        <div class="topbar-actions">
+          <span class="topbar-badge">Utility for reel-ready workflows</span>
+          <a class="ghost-link" href="index.html">Prompt Library</a>
+        </div>
+      </header>
+
+      <main>
+        <section class="downloader-shell panel">
+          <nav class="download-nav" aria-label="Download types">
+            <a class="download-nav__item is-active" href="downloader.html" data-platform-tab="instagram">
+              <span class="download-nav__icon" aria-hidden="true">🎞</span>
+              <span>Reels</span>
+            </a>
+            <a class="download-nav__item" href="downloader.html" data-platform-tab="youtube">
+              <span class="download-nav__icon" aria-hidden="true">▶</span>
+              <span>YouTube</span>
+            </a>
+            <a class="download-nav__item" href="downloader.html">
+              <span class="download-nav__icon" aria-hidden="true">▣</span>
+              <span>Shorts</span>
+            </a>
+            <a class="download-nav__item" href="downloader.html">
+              <span class="download-nav__icon" aria-hidden="true">♫</span>
+              <span>Audio</span>
+            </a>
+            <a class="download-nav__item" href="downloader.html">
+              <span class="download-nav__icon" aria-hidden="true">🖼</span>
+              <span>Photo</span>
+            </a>
+            <a class="download-nav__item" href="downloader.html">
+              <span class="download-nav__icon" aria-hidden="true">◎</span>
+              <span>Stories</span>
+            </a>
+          </nav>
+
+          <div class="downloader-hero">
+            <div class="downloader-intro">
+              <div class="section-heading downloader-heading">
+                <div>
+                  <p class="eyebrow">Creator utility</p>
+                  <h1 class="downloader-title" id="downloadTitle">
+                    Instagram Reel &amp; YouTube Downloader
+                  </h1>
+                </div>
+                <p class="section-copy" id="downloadSubtitle">
+                  Paste a public Instagram reel, YouTube video, or YouTube Shorts link and get
+                  a real preview plus downloadable file with a phone-first flow.
+                </p>
+              </div>
+
+              <div class="downloader-benefits" aria-label="Downloader benefits">
+                <div class="mini-panel">
+                  <span class="mini-panel__label">Fast flow</span>
+                  <strong>Paste and save</strong>
+                  <p>No login, no extra screens, and no fake placeholder result.</p>
+                </div>
+                <div class="mini-panel">
+                  <span class="mini-panel__label">Mobile UX</span>
+                  <strong>Touch-friendly</strong>
+                  <p>Large input, clear actions, and accessible status messaging.</p>
+                </div>
+                <div class="mini-panel">
+                  <span class="mini-panel__label">Public reels</span>
+                  <strong>Real media links</strong>
+                  <p>Downloads are proxied through your server so the button behaves more reliably.</p>
+                </div>
+              </div>
+            </div>
+
+            <section class="downloader-card glass-card download-workspace">
+              <form class="download-form" id="downloadForm" novalidate aria-busy="false">
+                <label class="field-label" for="reelUrl" id="downloadLabel">
+                  Instagram reel or YouTube link
+                </label>
+                <div class="input-stack">
+                  <input
+                    id="reelUrl"
+                    class="download-input"
+                    type="url"
+                    inputmode="url"
+                    placeholder="Paste Instagram reel or YouTube link"
+                    autocomplete="off"
+                    aria-describedby="downloadHint downloadError"
+                    required
+                  />
+                  <button class="button button--primary" id="downloadButton" type="submit">
+                    Download
+                  </button>
+                </div>
+
+                <div class="utility-row">
+                  <button class="ghost-button utility-button" id="pasteFromClipboard" type="button">
+                    Paste
+                  </button>
+                  <button class="ghost-button utility-button" id="tryDemoButton" type="button">
+                    Try Demo Link
+                  </button>
+                </div>
+
+                <p class="input-hint" id="downloadHint">
+                  Supports public Instagram reel links, YouTube watch links, and YouTube Shorts links.
+                </p>
+                <p class="input-error" id="downloadError" hidden role="alert">
+                  Invalid link. Paste a public Instagram reel, YouTube video, or Shorts URL.
+                </p>
+              </form>
+
+              <div
+                class="status-banner status-banner--loading"
+                id="downloadLoading"
+                hidden
+                aria-live="polite"
+              >
+                Fetching reel assets...
+              </div>
+
+              <div
+                class="status-banner status-banner--error"
+                id="downloadStatus"
+                hidden
+                role="alert"
+              ></div>
+
+              <section class="download-result" id="downloadResult" aria-live="polite">
+                <div class="result-placeholder" id="resultPlaceholder">
+                  <span class="detail-label">Ready when you are</span>
+                  <h2>Paste a supported link to generate the preview and download.</h2>
+                  <p>
+                    Once the media is resolved, you will see the video preview, source info,
+                    and download actions here.
+                  </p>
+                </div>
+
+                <div class="result-preview result-preview--video" id="resultPreview" hidden>
+                  <video
+                    id="resultVideo"
+                    class="result-video"
+                    controls
+                    playsinline
+                    preload="metadata"
+                  ></video>
+                </div>
+
+                <div class="result-preview" id="resultThumbnailWrap" hidden>
+                  <img id="resultThumbnail" alt="Reel thumbnail preview" />
+                </div>
+
+                <div class="result-content" id="resultContent" hidden>
+                  <div class="variation-card__header result-header">
+                    <strong id="resultTitle">Download assets</strong>
+                    <span class="pill" id="resultSource">Direct resolver</span>
+                  </div>
+
+                  <p class="download-meta" id="resultMeta">
+                    Your reel links are ready. Use the buttons below to save the file.
+                  </p>
+
+                  <dl class="result-facts">
+                    <div class="result-fact">
+                      <dt>Creator</dt>
+                      <dd id="resultOwner">Unknown</dd>
+                    </div>
+                    <div class="result-fact">
+                      <dt>Original link</dt>
+                      <dd>
+                        <a
+                          class="ghost-link result-link"
+                          id="resultCanonicalLink"
+                          href="#"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Open reel
+                        </a>
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div class="download-links">
+                    <a class="button button--primary" id="videoDownloadLink" href="#">
+                      Download Video
+                    </a>
+                    <a class="button button--secondary" id="audioDownloadLink" href="#" hidden>
+                      Download Audio
+                    </a>
+                    <button class="button button--success" id="downloadAgainButton" type="button">
+                      Download Again
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </section>
+          </div>
+
+          <div class="downloader-support-grid">
+            <section class="downloader-card glass-card">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">How it works</p>
+                  <h2>Simple like FastVideoSave, but cleaner</h2>
+                </div>
+                <p class="section-copy">
+                  The flow stays lightweight: copy the reel link, paste it here, then save the
+                  generated download file.
+                </p>
+              </div>
+
+              <div class="steps-grid" aria-label="Steps to download">
+                <article class="step-card">
+                  <span class="step-index">1</span>
+                  <h3>Copy the media link</h3>
+                  <p>Open Instagram or YouTube and copy the public reel, video, or Shorts URL.</p>
+                </article>
+                <article class="step-card">
+                  <span class="step-index">2</span>
+                  <h3>Paste and fetch</h3>
+                  <p>Paste the link here or use the clipboard button for a faster mobile flow.</p>
+                </article>
+                <article class="step-card">
+                  <span class="step-index">3</span>
+                  <h3>Preview then download</h3>
+                  <p>Your server resolves the media, shows an inline preview, and serves a downloadable file.</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="downloader-card glass-card legal-card">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Usage note</p>
+                  <h2>Public media only</h2>
+                </div>
+                <p class="section-copy">
+                  Download only content you have permission to use. Private or unavailable Instagram
+                  posts and restricted YouTube videos cannot be resolved reliably.
+                </p>
+              </div>
+
+              <div class="cta-tags">
+                <span class="pill">Mobile friendly</span>
+                <span class="pill">No login required</span>
+                <span class="pill">Server-proxied download</span>
+              </div>
+            </section>
+
+            <section class="downloader-card glass-card reference-copy-card">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Reference flow</p>
+                  <h2>Steps to Download Reels, Videos, and Shorts</h2>
+                </div>
+                <p class="section-copy">
+                  This follows the same simple UX pattern as the reference site: choose the media,
+                  copy the link, paste it here, preview it, and save the generated file to your phone or computer.
+                </p>
+              </div>
+
+              <div class="article-copy">
+                <p>
+                  This tool is built for quick, no-confusion use. Paste your public Instagram or
+                  YouTube URL into the box above and the app resolves a real previewable download file for you.
+                </p>
+                <p><strong>Step 1:</strong> Choose the reel, YouTube video, or Short that you want to download.</p>
+                <p><strong>Step 2:</strong> Copy the URL or share link from Instagram or YouTube.</p>
+                <p><strong>Step 3:</strong> Paste the link here and tap <strong>Download</strong>.</p>
+                <p><strong>Step 4:</strong> Save the result directly from your browser.</p>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <p>AI Prompt Vault now includes a mobile-friendly reel downloader alongside the prompt library.</p>
+        <p>&copy; <span id="currentYear"></span> AI Prompt Vault</p>
+      </footer>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <noscript>
+      <div class="noscript-banner">
+        JavaScript is required to submit the reel link and display download results.
+      </div>
+    </noscript>
+
+    <script src="script.js"></script>
+  </body>
+</html>

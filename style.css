@@ -94,7 +94,8 @@ button {
 .hero,
 .library,
 .detail-shell,
-.related-section {
+.related-section,
+.downloader-shell {
   position: relative;
   z-index: 1;
 }
@@ -173,7 +174,8 @@ button {
 .hero,
 .library,
 .detail-shell,
-.related-section {
+.related-section,
+.downloader-shell {
   overflow: hidden;
   border-radius: var(--radius-xl);
   border: 1px solid var(--line);
@@ -191,7 +193,8 @@ button {
 .hero::before,
 .detail-shell::before,
 .library::before,
-.related-section::before {
+.related-section::before,
+.downloader-shell::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -348,6 +351,12 @@ button {
   background: rgba(255, 255, 255, 0.045);
   border-color: var(--line);
   color: var(--text);
+}
+
+.button--success {
+  background: linear-gradient(135deg, #2cc967 0%, #18a34a 100%);
+  color: #f7fff9;
+  box-shadow: 0 18px 40px rgba(24, 163, 74, 0.24);
 }
 
 .button:hover,
@@ -569,8 +578,351 @@ button {
 
 .library,
 .related-section,
-.detail-shell {
+.detail-shell,
+.downloader-shell {
   padding: 1.25rem;
+}
+
+.downloader-shell {
+  margin-top: 1rem;
+}
+
+.download-nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.download-nav__item {
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+  padding: 0.9rem 0.55rem;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+    rgba(255, 255, 255, 0.02);
+  color: var(--muted-strong);
+  font-weight: 600;
+  transition:
+    transform 180ms var(--ease-premium, ease),
+    border-color 180ms var(--ease-premium, ease),
+    background 180ms var(--ease-premium, ease);
+}
+
+.download-nav__item:hover,
+.download-nav__item:focus-visible,
+.download-nav__item.is-active {
+  transform: translateY(-2px);
+  border-color: rgba(129, 168, 255, 0.26);
+  background:
+    linear-gradient(180deg, rgba(129, 168, 255, 0.16), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.03);
+}
+
+.download-nav__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 1.1rem;
+}
+
+.downloader-hero,
+.downloader-support-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.downloader-support-grid {
+  margin-top: 1rem;
+}
+
+.downloader-card {
+  padding: 1.15rem;
+}
+
+.downloader-heading h1,
+.downloader-title {
+  margin: 0;
+  font-family: "Space Grotesk", "Avenir Next", sans-serif;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  line-height: 0.94;
+  letter-spacing: -0.05em;
+  max-width: 11ch;
+}
+
+.downloader-benefits {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+
+.download-workspace {
+  display: grid;
+  gap: 1rem;
+}
+
+.download-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.field-label {
+  color: var(--muted-strong);
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.input-stack {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.utility-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.utility-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.85rem;
+  padding: 0 1rem;
+}
+
+.download-input {
+  min-height: 3.6rem;
+  width: 100%;
+  padding: 0 1.05rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text);
+  outline: 0;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.download-input::placeholder {
+  color: rgba(201, 210, 227, 0.52);
+}
+
+.download-input:focus {
+  border-color: rgba(129, 168, 255, 0.36);
+  box-shadow: 0 0 0 4px rgba(129, 168, 255, 0.12);
+}
+
+.download-input.is-invalid {
+  border-color: rgba(255, 113, 113, 0.62);
+  box-shadow: 0 0 0 4px rgba(255, 113, 113, 0.12);
+}
+
+.input-hint,
+.download-meta {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.input-error {
+  margin: 0;
+  color: #ff9b9b;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.status-banner {
+  margin-top: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  line-height: 1.6;
+}
+
+.status-banner--loading {
+  background: rgba(129, 168, 255, 0.08);
+  border-color: rgba(129, 168, 255, 0.22);
+  color: var(--muted-strong);
+}
+
+.status-banner--error {
+  background: rgba(255, 113, 113, 0.08);
+  border-color: rgba(255, 113, 113, 0.2);
+  color: #ffd4d4;
+}
+
+.download-result {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.result-placeholder h2 {
+  margin: 1rem 0 0;
+  font-family: "Space Grotesk", "Avenir Next", sans-serif;
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  letter-spacing: -0.04em;
+}
+
+.result-placeholder p {
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.result-preview {
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+    rgba(255, 255, 255, 0.02);
+}
+
+.result-preview--video {
+  padding: 1rem;
+}
+
+.result-preview img {
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+}
+
+.result-video {
+  display: block;
+  width: min(100%, 360px);
+  margin: 0 auto;
+  aspect-ratio: 9 / 16;
+  border-radius: 22px;
+  background: #06070d;
+  box-shadow: 0 26px 60px rgba(4, 8, 16, 0.38);
+}
+
+.result-content {
+  padding: 1rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.result-header {
+  align-items: flex-start;
+}
+
+.result-facts {
+  display: grid;
+  gap: 0.8rem;
+  margin: 1rem 0 0;
+}
+
+.result-fact {
+  padding: 0.85rem 0.95rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.result-fact dt {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.result-fact dd {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.result-link {
+  word-break: break-word;
+}
+
+.download-links {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.download-links .button {
+  width: 100%;
+}
+
+.steps-grid {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1.2rem;
+}
+
+.step-card {
+  padding: 1rem;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+    rgba(255, 255, 255, 0.02);
+}
+
+.step-card h3 {
+  margin: 0.9rem 0 0;
+  font-family: "Space Grotesk", "Avenir Next", sans-serif;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.step-card p {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(129, 168, 255, 0.16);
+  border: 1px solid rgba(129, 168, 255, 0.26);
+  color: var(--muted-strong);
+  font-weight: 700;
+}
+
+.legal-card .cta-tags {
+  margin-top: 1.25rem;
+}
+
+.reference-copy-card {
+  grid-column: 1 / -1;
+}
+
+.article-copy {
+  margin-top: 1.2rem;
+}
+
+.article-copy p {
+  margin: 0.9rem 0 0;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.article-copy strong {
+  color: var(--text);
 }
 
 .section-heading {
@@ -1217,7 +1569,8 @@ button {
 
   .library,
   .related-section,
-  .detail-shell {
+  .detail-shell,
+  .downloader-shell {
     padding: 1.45rem;
   }
 
@@ -1233,6 +1586,36 @@ button {
   .detail-layout {
     grid-template-columns: minmax(300px, 0.74fr) minmax(0, 1fr);
     align-items: start;
+  }
+
+  .downloader-hero {
+    grid-template-columns: minmax(0, 0.92fr) minmax(340px, 0.88fr);
+    align-items: start;
+  }
+
+  .download-nav {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .downloader-support-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+    align-items: start;
+  }
+
+  .downloader-benefits {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .input-stack {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .download-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .steps-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .detail-column:first-child {
@@ -1259,7 +1642,8 @@ button {
   }
 
   .library,
-  .related-section {
+  .related-section,
+  .downloader-shell {
     padding: 1.55rem;
   }
 }

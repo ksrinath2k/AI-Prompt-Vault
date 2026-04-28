@@ -25,6 +25,10 @@
       initDetailPage();
     }
 
+    if (page === "downloader") {
+      initDownloaderPage();
+    }
+
     initMotion();
   }
 
@@ -161,6 +165,381 @@
 
     refreshMotion(detailTarget);
     refreshMotion(relatedTarget);
+  }
+
+  function initDownloaderPage() {
+    const demoLinks = {
+      instagram: "https://www.instagram.com/reel/DBElt2UIuUG/?utm_source=ig_web_copy_link",
+      youtube: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    };
+    const platformCopy = {
+      instagram: {
+        title: "Instagram Reel & YouTube Downloader",
+        subtitle:
+          "Paste a public Instagram reel, YouTube video, or YouTube Shorts link and get a real preview plus downloadable file with a phone-first flow.",
+        label: "Instagram reel or YouTube link",
+        placeholder: "Paste Instagram reel or YouTube link",
+        hint:
+          "Supports public Instagram reel links, YouTube watch links, and YouTube Shorts links.",
+        demoLabel: "Try Demo Reel"
+      },
+      youtube: {
+        title: "YouTube Video & Shorts Downloader",
+        subtitle:
+          "Paste a public YouTube watch or Shorts link to preview the video inline and download it with fewer taps.",
+        label: "YouTube video or Shorts link",
+        placeholder: "Paste YouTube video or Shorts link",
+        hint: "Supports public YouTube watch links, Shorts links, and youtu.be share URLs.",
+        demoLabel: "Try Demo Video"
+      }
+    };
+    const form = document.getElementById("downloadForm");
+    const input = document.getElementById("reelUrl");
+    const button = document.getElementById("downloadButton");
+    const downloadTitle = document.getElementById("downloadTitle");
+    const downloadSubtitle = document.getElementById("downloadSubtitle");
+    const downloadLabel = document.getElementById("downloadLabel");
+    const platformTabs = Array.from(document.querySelectorAll("[data-platform-tab]"));
+    const pasteButton = document.getElementById("pasteFromClipboard");
+    const demoButton = document.getElementById("tryDemoButton");
+    const downloadAgainButton = document.getElementById("downloadAgainButton");
+    const error = document.getElementById("downloadError");
+    const loading = document.getElementById("downloadLoading");
+    const status = document.getElementById("downloadStatus");
+    const result = document.getElementById("downloadResult");
+    const placeholder = document.getElementById("resultPlaceholder");
+    const preview = document.getElementById("resultPreview");
+    const previewVideo = document.getElementById("resultVideo");
+    const thumbnailWrap = document.getElementById("resultThumbnailWrap");
+    const thumbnail = document.getElementById("resultThumbnail");
+    const content = document.getElementById("resultContent");
+    const title = document.getElementById("resultTitle");
+    const source = document.getElementById("resultSource");
+    const meta = document.getElementById("resultMeta");
+    const owner = document.getElementById("resultOwner");
+    const canonicalLink = document.getElementById("resultCanonicalLink");
+    const videoLink = document.getElementById("videoDownloadLink");
+    const audioLink = document.getElementById("audioDownloadLink");
+
+    if (
+      !form ||
+      !input ||
+      !button ||
+      !downloadTitle ||
+      !downloadSubtitle ||
+      !downloadLabel ||
+      !platformTabs.length ||
+      !pasteButton ||
+      !demoButton ||
+      !downloadAgainButton ||
+      !error ||
+      !loading ||
+      !status ||
+      !result ||
+      !placeholder ||
+      !preview ||
+      !previewVideo ||
+      !thumbnailWrap ||
+      !thumbnail ||
+      !content ||
+      !title ||
+      !source ||
+      !meta ||
+      !owner ||
+      !canonicalLink ||
+      !videoLink ||
+      !audioLink
+    ) {
+      return;
+    }
+
+    const state = {
+      platform: "instagram"
+    };
+
+    resetDownloaderState();
+    applyPlatformCopy(state.platform);
+    refreshMotion(result);
+
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) {
+        resetDownloaderState();
+        applyPlatformCopy(state.platform);
+      }
+    });
+
+    input.addEventListener("input", () => {
+      clearDownloaderMessages();
+      input.classList.remove("is-invalid");
+    });
+
+    platformTabs.forEach((tab) => {
+      tab.addEventListener("click", (event) => {
+        event.preventDefault();
+        const nextPlatform = tab.dataset.platformTab === "youtube" ? "youtube" : "instagram";
+        state.platform = nextPlatform;
+        resetDownloaderState();
+        applyPlatformCopy(nextPlatform);
+        input.focus();
+      });
+    });
+
+    pasteButton.addEventListener("click", async () => {
+      if (!navigator.clipboard || typeof navigator.clipboard.readText !== "function") {
+        showToast("Clipboard paste is not available here");
+        return;
+      }
+
+      try {
+        const text = (await navigator.clipboard.readText()).trim();
+        if (text) {
+          input.value = text;
+          input.focus();
+          clearDownloaderMessages();
+          showToast("Link pasted");
+        }
+      } catch (error) {
+        showToast("Clipboard access was blocked");
+      }
+    });
+
+    demoButton.addEventListener("click", () => {
+      input.value = demoLinks[state.platform];
+      clearDownloaderMessages();
+      input.classList.remove("is-invalid");
+      input.focus();
+      showToast("Demo link loaded");
+    });
+
+    downloadAgainButton.addEventListener("click", () => {
+      resetDownloaderState();
+      applyPlatformCopy(state.platform);
+      input.focus();
+      scrollResultIntoView(form);
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearDownloaderMessages();
+
+      const url = input.value.trim();
+      const detectedPlatform = detectSupportedPlatform(url);
+
+      if (!detectedPlatform) {
+        input.classList.add("is-invalid");
+        error.hidden = false;
+        showToast("Invalid link");
+        return;
+      }
+
+      if (state.platform !== detectedPlatform) {
+        state.platform = detectedPlatform;
+        applyPlatformCopy(detectedPlatform);
+      }
+
+      setLoadingState(true);
+
+      try {
+        const response = await fetch("/api/download", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ url })
+        });
+
+        const payload = await parseJsonSafely(response);
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Could not fetch media assets.");
+        }
+
+        state.platform = payload.platform || detectedPlatform;
+        applyPlatformCopy(state.platform);
+
+        preview.hidden = !payload.previewPath;
+        previewVideo.hidden = !payload.previewPath;
+        previewVideo.src = payload.previewPath || "";
+        previewVideo.poster = payload.thumbnailPath || "";
+        previewVideo.load();
+
+        thumbnailWrap.hidden = Boolean(payload.previewPath) || !payload.thumbnailPath;
+        thumbnail.src = payload.thumbnailPath || "";
+
+        title.textContent = payload.title || "Download assets";
+        source.textContent = payload.source || "Direct resolver";
+        meta.textContent =
+          payload.message ||
+          "Your media links are ready. Use the buttons below to preview or save the file.";
+        owner.textContent = payload.owner || "Public media";
+        canonicalLink.href = payload.canonicalUrl || url;
+        canonicalLink.textContent = payload.canonicalUrl
+          ? shortenUrlLabel(payload.canonicalUrl)
+          : "Open reel";
+
+        videoLink.href = payload.videoDownloadPath || "#";
+        if (payload.videoFilename) {
+          videoLink.setAttribute("download", payload.videoFilename);
+        } else {
+          videoLink.removeAttribute("download");
+        }
+
+        if (payload.audioDownloadPath) {
+          audioLink.href = payload.audioDownloadPath;
+          audioLink.setAttribute("download", payload.audioFilename || "media-audio.mp3");
+          audioLink.hidden = false;
+        } else {
+          audioLink.hidden = true;
+          audioLink.removeAttribute("href");
+          audioLink.removeAttribute("download");
+        }
+
+        placeholder.hidden = true;
+        content.hidden = false;
+
+        analytics.track("reel_download_requested", {
+          url,
+          platform: payload.platform || detectedPlatform,
+          resolvedUrl: payload.canonicalUrl || url,
+          hasAudio: Boolean(payload.audioDownloadPath)
+        });
+        showToast("Media assets ready");
+        scrollResultIntoView(result);
+        refreshMotion(result);
+      } catch (requestError) {
+        status.textContent = requestError.message || "Something went wrong.";
+        status.hidden = false;
+      } finally {
+        setLoadingState(false);
+      }
+    });
+
+    function clearDownloaderMessages() {
+      error.hidden = true;
+      status.hidden = true;
+      status.textContent = "";
+    }
+
+    function applyPlatformCopy(platform) {
+      const copy = platformCopy[platform] || platformCopy.instagram;
+
+      downloadTitle.textContent = copy.title;
+      downloadSubtitle.textContent = copy.subtitle;
+      downloadLabel.textContent = copy.label;
+      input.placeholder = copy.placeholder;
+      document.getElementById("downloadHint").textContent = copy.hint;
+      demoButton.textContent = copy.demoLabel;
+
+      platformTabs.forEach((tab) => {
+        const isActive = tab.dataset.platformTab === platform;
+        tab.classList.toggle("is-active", isActive);
+        tab.setAttribute("aria-current", isActive ? "page" : "false");
+      });
+    }
+
+    function resetDownloaderState() {
+      form.reset();
+      clearDownloaderMessages();
+      input.classList.remove("is-invalid");
+      preview.hidden = true;
+      previewVideo.pause();
+      previewVideo.removeAttribute("src");
+      previewVideo.removeAttribute("poster");
+      previewVideo.load();
+      previewVideo.hidden = true;
+      thumbnailWrap.hidden = true;
+      thumbnail.removeAttribute("src");
+      placeholder.hidden = false;
+      content.hidden = true;
+      title.textContent = "Download assets";
+      source.textContent = "Direct resolver";
+      meta.textContent =
+        "Your media links are ready. Use the buttons below to preview or save the file.";
+      owner.textContent = "Unknown";
+      canonicalLink.href = "#";
+      canonicalLink.textContent = "Open reel";
+      videoLink.href = "#";
+      videoLink.removeAttribute("download");
+      audioLink.hidden = true;
+      audioLink.removeAttribute("href");
+      audioLink.removeAttribute("download");
+      setLoadingState(false);
+    }
+
+    function setLoadingState(isLoading) {
+      form.setAttribute("aria-busy", String(isLoading));
+      button.disabled = isLoading;
+      pasteButton.disabled = isLoading;
+      demoButton.disabled = isLoading;
+      downloadAgainButton.disabled = isLoading;
+      button.textContent = isLoading ? "Loading..." : "Download";
+      loading.hidden = !isLoading;
+    }
+  }
+
+  function detectSupportedPlatform(value) {
+    if (!value) {
+      return null;
+    }
+
+    try {
+      const url = new URL(value);
+      const host = url.hostname.replace(/^www\./, "").toLowerCase();
+      const path = url.pathname.toLowerCase();
+      if (
+        (host === "instagram.com" || host.endsWith(".instagram.com")) &&
+        (path.startsWith("/reel/") ||
+          path.startsWith("/reels/") ||
+          path.startsWith("/share/reel/") ||
+          path.startsWith("/share/p/") ||
+          path.startsWith("/p/"))
+      ) {
+        return "instagram";
+      }
+
+      if (host === "youtu.be" && path.length > 1) {
+        return "youtube";
+      }
+
+      if (
+        (host === "youtube.com" || host.endsWith(".youtube.com")) &&
+        (path === "/watch" || path.startsWith("/shorts/") || path.startsWith("/embed/"))
+      ) {
+        return "youtube";
+      }
+
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function parseJsonSafely(response) {
+    try {
+      return await response.json();
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function shortenUrlLabel(value) {
+    try {
+      const url = new URL(value);
+      return `${url.hostname}${url.pathname}`;
+    } catch (error) {
+      return "Open reel";
+    }
+  }
+
+  function scrollResultIntoView(node) {
+    if (!node || typeof node.scrollIntoView !== "function") {
+      return;
+    }
+
+    node.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest"
+    });
   }
 
   function matchesPrompt(prompt, state) {
@@ -570,6 +949,7 @@
     markRevealBatch([document.querySelector(".hero")], 80, 0);
     markRevealBatch([document.querySelector(".library")], 180, 0);
     markRevealBatch([document.querySelector(".detail-shell")], 140, 0);
+    markRevealBatch([document.querySelector(".downloader-shell")], 160, 0);
     markRevealBatch([document.querySelector(".related-section")], 220, 0);
     markRevealBatch([document.querySelector(".site-footer")], 280, 0);
 
@@ -585,7 +965,7 @@
   function markDynamicReveals(root) {
     markRevealBatch(
       root.querySelectorAll(
-        ".prompt-card, .mini-panel, .stat-card, .metric-card, .detail-card, .tip-card, .premium-card, .variation-card"
+        ".prompt-card, .mini-panel, .stat-card, .metric-card, .detail-card, .tip-card, .premium-card, .variation-card, .downloader-card, .result-content"
       ),
       80,
       55
@@ -654,7 +1034,7 @@
     const supportsPointer = window.matchMedia("(pointer: fine)").matches;
     const surfaces = root.querySelectorAll
       ? root.querySelectorAll(
-          ".prompt-card, .hero-card--primary, .mini-panel, .detail-card, .premium-card, .variation-card, .stat-card, .metric-card, .library-toolbar"
+          ".prompt-card, .hero-card--primary, .mini-panel, .detail-card, .premium-card, .variation-card, .stat-card, .metric-card, .library-toolbar, .downloader-card, .result-content"
         )
       : [];
 
