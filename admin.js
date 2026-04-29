@@ -9,6 +9,10 @@
   const promptList = document.getElementById("adminPromptList");
   const promptCount = document.getElementById("adminPromptCount");
   const imageFileInput = document.getElementById("promptImageFile");
+  const liveChannel =
+    typeof BroadcastChannel === "function"
+      ? new BroadcastChannel("prompt-vault-updates")
+      : null;
 
   const fields = {
     title: document.getElementById("promptTitle"),
@@ -31,17 +35,14 @@
   }
 
   newPromptButton.addEventListener("click", () => {
-    form.reset();
-    promptIdInput.value = "";
-    promptSelect.value = "";
+    resetForm();
     setStatus("Ready to create a new prompt.", false);
   });
 
   promptSelect.addEventListener("change", () => {
     const selectedId = Number(promptSelect.value);
     if (!selectedId) {
-      form.reset();
-      promptIdInput.value = "";
+      resetForm();
       setStatus("Ready to create a new prompt.", false);
       return;
     }
@@ -63,29 +64,27 @@
       const payload = await buildPayload();
       const response = await fetch("/api/admin/prompts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-key": apiKey
-        },
+        headers: createAdminHeaders(),
         body: JSON.stringify(payload)
       });
-      const result = await response.json();
+      const result = await parseJson(response);
 
       if (!response.ok) {
         throw new Error(result.error || "Unable to save prompt.");
       }
 
       state.prompts = Array.isArray(result.prompts) ? result.prompts : [];
-      syncPromptPicker();
+      syncPromptPicker(result.prompt ? String(result.prompt.id) : "");
       renderPromptList();
 
       if (result.prompt) {
         fillForm(result.prompt);
-        promptSelect.value = String(result.prompt.id);
         setStatus(`Saved prompt #${result.prompt.id}.`, false);
       } else {
         setStatus("Prompt saved.", false);
       }
+
+      broadcastPromptUpdate("saved");
     } catch (error) {
       setStatus(error.message || "Unable to save prompt.", true);
     }
@@ -98,22 +97,52 @@
 
     try {
       const response = await fetch("/api/admin/prompts", {
-        headers: {
-          "x-admin-key": apiKey
-        }
+        headers: createAdminHeaders()
       });
-      const result = await response.json();
+      const result = await parseJson(response);
 
       if (!response.ok) {
         throw new Error(result.error || "Unable to load prompts.");
       }
 
       state.prompts = Array.isArray(result.prompts) ? result.prompts : [];
-      syncPromptPicker();
+      syncPromptPicker(promptIdInput.value);
       renderPromptList();
       setStatus("Admin console is ready.", false);
     } catch (error) {
       setStatus(error.message || "Unable to load prompts.", true);
+    }
+  }
+
+  async function deletePrompt(promptId) {
+    const prompt = state.prompts.find((entry) => Number(entry.id) === Number(promptId));
+    if (!prompt || !window.confirm(`Delete "${prompt.title}"?`)) {
+      return;
+    }
+
+    setStatus(`Deleting prompt #${prompt.id}...`, false);
+
+    try {
+      const response = await fetch(`/api/admin/prompts/${encodeURIComponent(prompt.id)}`, {
+        method: "DELETE",
+        headers: createAdminHeaders()
+      });
+      const result = await parseJson(response);
+
+      if (!response.ok) {
+        throw new Error(result.error || "Unable to delete prompt.");
+      }
+
+      state.prompts = Array.isArray(result.prompts) ? result.prompts : [];
+      if (String(promptIdInput.value) === String(prompt.id)) {
+        resetForm();
+      }
+      syncPromptPicker("");
+      renderPromptList();
+      setStatus(`Deleted prompt #${prompt.id}.`, false);
+      broadcastPromptUpdate("deleted");
+    } catch (error) {
+      setStatus(error.message || "Unable to delete prompt.", true);
     }
   }
 
@@ -147,10 +176,17 @@
       ? prompt.variations.join("\n")
       : "";
     imageFileInput.value = "";
+    promptSelect.value = String(prompt.id || "");
   }
 
-  function syncPromptPicker() {
-    const previousValue = promptSelect.value;
+  function resetForm() {
+    form.reset();
+    promptIdInput.value = "";
+    promptSelect.value = "";
+    imageFileInput.value = "";
+  }
+
+  function syncPromptPicker(selectedValue) {
     promptSelect.innerHTML = '<option value="">Create a new prompt</option>';
 
     state.prompts.forEach((prompt) => {
@@ -160,9 +196,10 @@
       promptSelect.appendChild(option);
     });
 
-    promptSelect.value = previousValue && state.prompts.some((prompt) => String(prompt.id) === previousValue)
-      ? previousValue
-      : "";
+    promptSelect.value =
+      selectedValue && state.prompts.some((prompt) => String(prompt.id) === String(selectedValue))
+        ? String(selectedValue)
+        : "";
     promptCount.textContent = `${state.prompts.length} total`;
   }
 
@@ -178,20 +215,47 @@
     }
 
     state.prompts.forEach((prompt) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "admin-list__item";
-      button.innerHTML = `
-        <span class="admin-list__meta">#${prompt.id} · ${escapeHtml(prompt.category || "Uncategorized")}</span>
-        <strong>${escapeHtml(prompt.title || "Untitled prompt")}</strong>
-        <span class="admin-list__time">${escapeHtml(formatTimestamp(prompt.updatedAt || prompt.createdAt))}</span>
-      `;
-      button.addEventListener("click", () => {
-        promptSelect.value = String(prompt.id);
+      const card = document.createElement("article");
+      card.className = "admin-list__item";
+
+      const meta = document.createElement("span");
+      meta.className = "admin-list__meta";
+      meta.textContent = `#${prompt.id} · ${prompt.category || "Uncategorized"}`;
+
+      const title = document.createElement("strong");
+      title.textContent = prompt.title || "Untitled prompt";
+
+      const time = document.createElement("span");
+      time.className = "admin-list__time";
+      time.textContent = formatTimestamp(prompt.updatedAt || prompt.createdAt);
+
+      const actions = document.createElement("div");
+      actions.className = "admin-list__actions";
+
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "ghost-button utility-button admin-action-button";
+      editButton.textContent = "Edit";
+      editButton.addEventListener("click", () => {
         fillForm(prompt);
         setStatus(`Editing prompt #${prompt.id}.`, false);
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
       });
-      promptList.appendChild(button);
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "ghost-button utility-button admin-action-button admin-action-button--danger";
+      deleteButton.textContent = "Delete";
+      deleteButton.addEventListener("click", () => {
+        deletePrompt(prompt.id);
+      });
+
+      actions.append(editButton, deleteButton);
+      card.append(meta, title, time, actions);
+      promptList.appendChild(card);
     });
   }
 
@@ -218,6 +282,21 @@
     });
   }
 
+  function createAdminHeaders() {
+    return {
+      "Content-Type": "application/json",
+      "x-admin-key": apiKey
+    };
+  }
+
+  async function parseJson(response) {
+    try {
+      return await response.json();
+    } catch (error) {
+      return {};
+    }
+  }
+
   function splitLines(value) {
     return String(value || "")
       .split(/\r?\n|,/)
@@ -242,12 +321,20 @@
     }).format(new Date(timestamp));
   }
 
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
+  function broadcastPromptUpdate(action) {
+    const payload = {
+      action,
+      timestamp: Date.now()
+    };
+
+    if (liveChannel) {
+      liveChannel.postMessage(payload);
+    }
+
+    try {
+      window.localStorage.setItem("prompt-vault-update", JSON.stringify(payload));
+    } catch (error) {
+      // Ignore storage failures in private browsing or restricted environments.
+    }
   }
 })();

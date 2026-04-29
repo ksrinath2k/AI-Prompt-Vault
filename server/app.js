@@ -5,16 +5,20 @@ const { createHmac, timingSafeEqual } = require("node:crypto");
 const { Readable } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 const vm = require("node:vm");
+const { getStore } = require("@netlify/blobs");
 const { instagramGetUrl } = require("instagram-url-direct");
 
 const app = express();
 const rootDir = path.resolve(process.cwd());
 const assetsDir = path.join(rootDir, "Assets");
 const promptDataPath = path.join(rootDir, "data.js");
+const promptStoreKey = "prompts";
+const promptStoreName = "prompt-vault";
+const promptAssetStoreName = "prompt-vault-assets";
 const mediaTokenTtlMs = 20 * 60 * 1000;
 const mediaTokenSecret = process.env.MEDIA_TOKEN_SECRET || "ai-prompt-vault-local-secret";
-const adminRoutePath = "/vault-admin-8c7f5k2m";
 const adminWriteKey = process.env.ADMIN_WRITE_KEY || "vault-admin-8c7f5k2m";
+const adminRoutePath = `/${process.env.ADMIN_ROUTE_TOKEN || adminWriteKey}`;
 const instagramUserAgent =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 const youtubeUserAgent =
@@ -24,6 +28,74 @@ let youtubeClientPromise;
 
 app.use(express.json({ limit: "15mb" }));
 app.use(express.static(rootDir));
+
+app.get("/api/prompts", async (req, res) => {
+  try {
+    const allPrompts = await loadAllPrompts();
+    const page = clampNumber(req.query.page, 1, Number.MAX_SAFE_INTEGER, 1);
+    const limit = clampNumber(req.query.limit, 1, 50, 10);
+    const query = normalizeOptionalString(req.query.query);
+    const category = normalizeOptionalString(req.query.category);
+    const filteredPrompts = filterPrompts(allPrompts, {
+      query,
+      activeFilter: category && category !== "All" ? category : "All"
+    });
+    const totalPages = Math.max(1, Math.ceil(filteredPrompts.length / limit));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * limit;
+    const prompts = filteredPrompts.slice(start, start + limit);
+
+    return res.json({
+      prompts,
+      page: safePage,
+      limit,
+      total: filteredPrompts.length,
+      totalAll: allPrompts.length,
+      totalPages,
+      hasNextPage: safePage < totalPages,
+      categories: buildCategoryList(allPrompts),
+      refreshedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: "Unable to load prompts right now."
+    });
+  }
+});
+
+app.get("/api/prompts/:id", async (req, res) => {
+  try {
+    const allPrompts = await loadAllPrompts();
+    const prompt = allPrompts.find((entry) => String(entry.id) === String(req.params.id));
+
+    if (!prompt) {
+      return res.status(404).json({ error: "Prompt not found." });
+    }
+
+    return res.json({
+      prompt,
+      related: getRelatedPrompts(prompt, allPrompts)
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Unable to load that prompt right now." });
+  }
+});
+
+app.get("/api/assets/:assetId", async (req, res) => {
+  try {
+    const asset = await getStoredAsset(req.params.assetId);
+
+    if (!asset) {
+      return res.status(404).send("Asset not found.");
+    }
+
+    res.setHeader("Content-Type", asset.contentType);
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    return res.send(Buffer.from(asset.bytes));
+  } catch (error) {
+    return res.status(404).send("Asset not found.");
+  }
+});
 
 app.get(adminRoutePath, (req, res) => {
   res.type("html").send(renderAdminPage());
@@ -35,7 +107,7 @@ app.get("/api/admin/prompts", async (req, res) => {
   }
 
   try {
-    const prompts = sortPromptsNewestFirst(await readPromptData());
+    const prompts = await loadAllPrompts();
     return res.json({ prompts });
   } catch (error) {
     return res.status(500).json({ error: "Unable to load prompts right now." });
@@ -48,7 +120,7 @@ app.post("/api/admin/prompts", async (req, res) => {
   }
 
   try {
-    const currentPrompts = await readPromptData();
+    const currentPrompts = await loadAllPrompts();
     const promptInput = await normalizePromptInput(req.body, currentPrompts);
     const existingIndex = currentPrompts.findIndex(
       (entry) => Number(entry.id) === Number(promptInput.id)
@@ -66,6 +138,10 @@ app.post("/api/admin/prompts", async (req, res) => {
         createdAt: existingPrompt.createdAt || promptInput.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
+
+      if (existingPrompt.image && existingPrompt.image !== updatedPrompt.image) {
+        await maybeDeletePromptAsset(existingPrompt.image);
+      }
 
       nextPrompts = currentPrompts.slice();
       nextPrompts[existingIndex] = updatedPrompt;
@@ -85,16 +161,52 @@ app.post("/api/admin/prompts", async (req, res) => {
     }
 
     const sortedPrompts = sortPromptsNewestFirst(nextPrompts);
-    await writePromptData(sortedPrompts);
+    await saveAllPrompts(sortedPrompts);
 
     return res.json({
       prompt: sortedPrompts.find((entry) => Number(entry.id) === Number(savedPromptId)),
-      prompts: sortedPrompts
+      prompts: sortedPrompts,
+      refreshedAt: new Date().toISOString()
     });
   } catch (error) {
-    const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 400;
+    const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
     return res.status(statusCode).json({
       error: error.publicMessage || "We could not save that prompt right now."
+    });
+  }
+});
+
+app.delete("/api/admin/prompts/:id", async (req, res) => {
+  if (!isAuthorizedAdminRequest(req)) {
+    return res.status(403).json({ error: "Admin access denied." });
+  }
+
+  try {
+    const currentPrompts = await loadAllPrompts();
+    const promptToDelete = currentPrompts.find(
+      (entry) => String(entry.id) === String(req.params.id)
+    );
+
+    if (!promptToDelete) {
+      return res.status(404).json({ error: "Prompt not found." });
+    }
+
+    const remainingPrompts = currentPrompts.filter(
+      (entry) => String(entry.id) !== String(req.params.id)
+    );
+
+    await saveAllPrompts(remainingPrompts);
+    await maybeDeletePromptAsset(promptToDelete.image);
+
+    return res.json({
+      deletedId: promptToDelete.id,
+      prompts: remainingPrompts,
+      refreshedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
+    return res.status(statusCode).json({
+      error: error.publicMessage || "We could not delete that prompt right now."
     });
   }
 });
@@ -777,6 +889,64 @@ async function writePromptData(prompts) {
   await fs.writeFile(promptDataPath, serialized, "utf8");
 }
 
+async function loadAllPrompts() {
+  if (canUseBlobStorage()) {
+    const blobStore = getPromptBlobStore();
+    const storedPrompts = await blobStore.get(promptStoreKey, { type: "json" });
+
+    if (Array.isArray(storedPrompts)) {
+      return sortPromptsNewestFirst(storedPrompts.map(normalizePromptRecord));
+    }
+
+    const seededPrompts = sortPromptsNewestFirst((await readPromptData()).map(normalizePromptRecord));
+    await blobStore.setJSON(promptStoreKey, seededPrompts);
+    return seededPrompts;
+  }
+
+  return sortPromptsNewestFirst((await readPromptData()).map(normalizePromptRecord));
+}
+
+async function saveAllPrompts(prompts) {
+  const normalizedPrompts = sortPromptsNewestFirst(prompts.map(normalizePromptRecord));
+
+  if (canUseBlobStorage()) {
+    await getPromptBlobStore().setJSON(promptStoreKey, normalizedPrompts);
+    return;
+  }
+
+  await writePromptData(normalizedPrompts);
+}
+
+function normalizePromptRecord(prompt) {
+  return {
+    ...prompt,
+    id: Number(prompt.id),
+    title: normalizeOptionalString(prompt.title),
+    category: normalizeOptionalString(prompt.category),
+    format: normalizeOptionalString(prompt.format),
+    description: normalizeOptionalString(prompt.description),
+    image: normalizeOptionalString(prompt.image),
+    prompt: normalizeOptionalString(prompt.prompt),
+    tools: normalizeStringList(prompt.tools),
+    tips: normalizeOptionalString(prompt.tips),
+    variations: normalizeStringList(prompt.variations),
+    createdAt: normalizeOptionalString(prompt.createdAt),
+    updatedAt: normalizeOptionalString(prompt.updatedAt)
+  };
+}
+
+function canUseBlobStorage() {
+  return Boolean(globalThis.netlifyBlobsContext || process.env.NETLIFY_BLOBS_CONTEXT);
+}
+
+function getPromptBlobStore() {
+  return getStore(promptStoreName);
+}
+
+function getPromptAssetBlobStore() {
+  return getStore(promptAssetStoreName);
+}
+
 async function normalizePromptInput(body, currentPrompts) {
   const title = readRequiredField(body.title, "Title");
   const category = readRequiredField(body.category, "Category");
@@ -851,6 +1021,15 @@ function normalizeStringList(value) {
     .filter(Boolean);
 }
 
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
+
+  return Math.max(min, Math.min(max, Math.floor(number)));
+}
+
 function getNextPromptId(prompts) {
   return prompts.reduce((highest, prompt) => {
     const numericId = Number(prompt.id);
@@ -898,9 +1077,19 @@ async function maybeSaveUploadedImage(imageUpload) {
   }
 
   const fileName = `${Date.now()}-${sanitizeFileSegment(originalName.replace(/\.[^.]+$/, ""))}.${extension}`;
-  const outputPath = path.join(assetsDir, fileName);
   const bytes = Buffer.from(parsed[2], "base64");
 
+  if (canUseBlobStorage()) {
+    await getPromptAssetBlobStore().set(fileName, bytes, {
+      metadata: {
+        contentType: finalMimeType
+      }
+    });
+
+    return `/api/assets/${encodeURIComponent(fileName)}`;
+  }
+
+  const outputPath = path.join(assetsDir, fileName);
   await fs.mkdir(assetsDir, { recursive: true });
   await fs.writeFile(outputPath, bytes);
   return `/Assets/${fileName}`;
@@ -927,6 +1116,126 @@ function getImageExtension(mimeType, originalName) {
       ? "jpg"
       : extension
     : "";
+}
+
+async function getStoredAsset(assetId) {
+  const key = decodeURIComponent(String(assetId || ""));
+
+  if (canUseBlobStorage()) {
+    const response = await getPromptAssetBlobStore().getWithMetadata(key, {
+      type: "arrayBuffer"
+    });
+
+    if (!response) {
+      return null;
+    }
+
+    return {
+      bytes: response.data,
+      contentType:
+        normalizeOptionalString(response.metadata?.contentType) ||
+        getContentTypeFromFileName(key)
+    };
+  }
+
+  const filePath = path.join(assetsDir, key);
+  const bytes = await fs.readFile(filePath);
+  return {
+    bytes,
+    contentType: getContentTypeFromFileName(key)
+  };
+}
+
+async function maybeDeletePromptAsset(imagePath) {
+  const normalizedPath = normalizeOptionalString(imagePath);
+
+  if (normalizedPath.startsWith("/api/assets/")) {
+    const assetKey = decodeURIComponent(normalizedPath.replace("/api/assets/", ""));
+
+    if (canUseBlobStorage()) {
+      await getPromptAssetBlobStore().delete(assetKey);
+      return;
+    }
+  }
+
+  if (normalizedPath.startsWith("/Assets/")) {
+    const filePath = path.join(rootDir, normalizedPath.replace(/^\//, ""));
+    try {
+      await fs.unlink(filePath);
+    } catch (error) {
+      if (error && error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+}
+
+function getContentTypeFromFileName(fileName) {
+  const extension = path.extname(fileName).replace(".", "").toLowerCase();
+  const contentTypeMap = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+    svg: "image/svg+xml"
+  };
+
+  return contentTypeMap[extension] || "application/octet-stream";
+}
+
+function filterPrompts(prompts, state) {
+  return prompts.filter((prompt) => matchesPrompt(prompt, state));
+}
+
+function matchesPrompt(prompt, state) {
+  const searchStack = [
+    prompt.title,
+    prompt.description,
+    prompt.category,
+    prompt.format,
+    prompt.tips,
+    ...(Array.isArray(prompt.tools) ? prompt.tools : []),
+    ...(Array.isArray(prompt.variations) ? prompt.variations : [])
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const query = normalizeOptionalString(state.query).toLowerCase();
+  const activeFilter = normalizeOptionalString(state.activeFilter) || "All";
+  const matchesQuery = query ? searchStack.includes(query) : true;
+  const matchesFilter = activeFilter === "All" ? true : prompt.category === activeFilter;
+
+  return matchesQuery && matchesFilter;
+}
+
+function buildCategoryList(prompts) {
+  return ["All"].concat(
+    [...new Set(prompts.map((prompt) => prompt.category).filter(Boolean))].sort()
+  );
+}
+
+function getRelatedPrompts(currentPrompt, prompts) {
+  return prompts
+    .filter((prompt) => prompt.id !== currentPrompt.id)
+    .sort((left, right) => scorePrompt(right, currentPrompt) - scorePrompt(left, currentPrompt))
+    .slice(0, 3);
+}
+
+function scorePrompt(candidate, currentPrompt) {
+  let score = 0;
+
+  if (candidate.category === currentPrompt.category) {
+    score += 3;
+  }
+
+  candidate.tools.forEach((tool) => {
+    if (currentPrompt.tools.includes(tool)) {
+      score += 1;
+    }
+  });
+
+  return score;
 }
 
 function renderAdminPage() {
@@ -966,7 +1275,7 @@ function renderAdminPage() {
               <h1 class="admin-title">Upload or update prompts without editing IDs by hand</h1>
             </div>
             <p class="section-copy section-copy--tight">
-              This URL is intentionally private. New and updated prompts are saved into <code>data.js</code> automatically, and the public library shows the latest items first.
+              This URL is intentionally private. New, edited, and deleted prompts are stored through the live API so the public library updates immediately with 10-item pagination.
             </p>
           </div>
 
@@ -1051,7 +1360,10 @@ function renderAdminPage() {
 
             <aside class="glass-card admin-card admin-card--list">
               <div class="admin-card__header">
-                <h2>Latest prompts</h2>
+                <div>
+                  <h2>Manage prompts</h2>
+                  <p class="input-hint">Edit or delete any saved prompt from this list.</p>
+                </div>
                 <span class="pill" id="adminPromptCount">0 total</span>
               </div>
               <div class="admin-list" id="adminPromptList"></div>
@@ -1063,7 +1375,8 @@ function renderAdminPage() {
 
     <script>
       window.promptVaultAdmin = {
-        apiKey: ${JSON.stringify(adminWriteKey)}
+        apiKey: ${JSON.stringify(adminWriteKey)},
+        adminPath: ${JSON.stringify(adminRoutePath)}
       };
     </script>
     <script src="/admin.js"></script>

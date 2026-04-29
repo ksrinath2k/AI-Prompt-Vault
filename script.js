@@ -1,7 +1,11 @@
 (function () {
-  const vaultPrompts = Array.isArray(window.prompts)
+  const fallbackPrompts = Array.isArray(window.prompts)
     ? window.prompts.slice().sort(sortPromptsNewestFirst)
     : [];
+  const liveChannel =
+    typeof BroadcastChannel === "function"
+      ? new BroadcastChannel("prompt-vault-updates")
+      : null;
   const toastElement = document.getElementById("toast");
   const analytics = window.promptVaultAnalytics || {
     track(eventName, payload) {
@@ -20,11 +24,11 @@
     bindGlobalCtas();
 
     if (page === "home") {
-      initHomePage();
+      initHomePage().catch(() => {});
     }
 
     if (page === "detail") {
-      initDetailPage();
+      initDetailPage().catch(() => {});
     }
 
     if (page === "downloader") {
@@ -56,86 +60,176 @@
     });
   }
 
-  function initHomePage() {
+  async function initHomePage() {
     const promptGrid = document.getElementById("promptGrid");
     const filterGroup = document.getElementById("filterGroup");
     const searchInput = document.getElementById("promptSearch");
     const resultsLabel = document.getElementById("resultsLabel");
     const promptCount = document.getElementById("promptCount");
+    const paginationControls = document.getElementById("paginationControls");
+    const paginationSummary = document.getElementById("paginationSummary");
+    const previousPageButton = document.getElementById("previousPageButton");
+    const nextPageButton = document.getElementById("nextPageButton");
 
-    if (!promptGrid || !filterGroup || !searchInput || !resultsLabel) {
+    if (
+      !promptGrid ||
+      !filterGroup ||
+      !searchInput ||
+      !resultsLabel ||
+      !promptCount ||
+      !paginationControls ||
+      !paginationSummary ||
+      !previousPageButton ||
+      !nextPageButton
+    ) {
       return;
     }
 
-    const categories = ["All"].concat(
-      [...new Set(vaultPrompts.map((prompt) => prompt.category))].sort()
-    );
     const state = {
       query: "",
-      activeFilter: "All"
+      activeFilter: "All",
+      page: 1,
+      limit: 10,
+      totalPages: 1,
+      categories: ["All"]
     };
 
-    promptCount.textContent = String(vaultPrompts.length);
+    searchInput.addEventListener("input", () => {
+      state.query = searchInput.value.trim();
+      state.page = 1;
+      window.clearTimeout(searchInput.__debounceId);
+      searchInput.__debounceId = window.setTimeout(() => {
+        loadPage();
+      }, 180);
+    });
 
-    categories.forEach((category) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "filter-chip";
-      button.textContent = category;
-      button.setAttribute("aria-pressed", category === state.activeFilter ? "true" : "false");
-
-      if (category === state.activeFilter) {
-        button.classList.add("is-active");
+    previousPageButton.addEventListener("click", () => {
+      if (state.page <= 1) {
+        return;
       }
 
-      button.addEventListener("click", () => {
-        state.activeFilter = category;
-        filterGroup.querySelectorAll(".filter-chip").forEach((chip) => {
-          const isSelected = chip.textContent === category;
-          chip.classList.toggle("is-active", isSelected);
-          chip.setAttribute("aria-pressed", String(isSelected));
-        });
-        renderLibrary();
+      state.page -= 1;
+      loadPage();
+    });
+
+    nextPageButton.addEventListener("click", () => {
+      if (state.page >= state.totalPages) {
+        return;
+      }
+
+      state.page += 1;
+      loadPage();
+    });
+
+    if (liveChannel) {
+      liveChannel.addEventListener("message", () => {
+        loadPage(true);
+      });
+    }
+
+    window.addEventListener("storage", (event) => {
+      if (event.key === "prompt-vault-update") {
+        loadPage(true);
+      }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        loadPage(true);
+      }
+    });
+
+    await loadPage();
+
+    async function loadPage(silent) {
+      if (!silent) {
+        resultsLabel.textContent = "Loading prompts...";
+      }
+
+      const payload = await loadPromptPage({
+        page: state.page,
+        limit: state.limit,
+        query: state.query,
+        category: state.activeFilter
       });
 
-      filterGroup.appendChild(button);
-    });
+      state.categories = Array.isArray(payload.categories) && payload.categories.length
+        ? payload.categories
+        : ["All"];
+      if (!state.categories.includes(state.activeFilter)) {
+        state.activeFilter = "All";
+      }
+      state.totalPages = Number(payload.totalPages) || 1;
+      state.page = Number(payload.page) || 1;
 
-    searchInput.addEventListener("input", (event) => {
-      state.query = event.target.value.trim().toLowerCase();
-      renderLibrary();
-    });
+      promptCount.textContent = String(payload.totalAll || payload.total || 0);
+      renderFilters();
+      renderLibrary(payload.prompts || [], payload.total || 0);
+      renderPagination(payload.total || 0);
+    }
 
-    renderLibrary();
+    function renderFilters() {
+      filterGroup.innerHTML = "";
 
-    function renderLibrary() {
-      const filtered = vaultPrompts.filter((prompt) => matchesPrompt(prompt, state));
+      state.categories.forEach((category) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "filter-chip";
+        button.textContent = category;
+        button.setAttribute("aria-pressed", category === state.activeFilter ? "true" : "false");
+
+        if (category === state.activeFilter) {
+          button.classList.add("is-active");
+        }
+
+        button.addEventListener("click", () => {
+          state.activeFilter = category;
+          state.page = 1;
+          loadPage();
+        });
+
+        filterGroup.appendChild(button);
+      });
+    }
+
+    function renderLibrary(prompts, totalMatches) {
       resultsLabel.textContent =
-        filtered.length > 0
-          ? `${filtered.length} prompt${filtered.length === 1 ? "" : "s"} ready to explore`
+        totalMatches > 0
+          ? `${totalMatches} prompt${totalMatches === 1 ? "" : "s"} ready to explore`
           : "No prompts match this search yet";
 
       promptGrid.innerHTML = "";
 
-      if (filtered.length === 0) {
+      if (!prompts.length) {
         promptGrid.appendChild(
           createEmptyState(
             "No prompt matched that search",
             "Try a tool name like CapCut or Midjourney, or switch back to All categories."
           )
         );
+        paginationControls.hidden = true;
         return;
       }
 
-      filtered.forEach((prompt) => {
+      prompts.forEach((prompt) => {
         promptGrid.appendChild(createPromptCard(prompt));
       });
 
       refreshMotion(promptGrid);
     }
+
+    function renderPagination(totalMatches) {
+      paginationControls.hidden = totalMatches <= state.limit && state.page === 1;
+      paginationSummary.textContent =
+        totalMatches > 0
+          ? `Page ${state.page} of ${state.totalPages}`
+          : "No pages";
+      previousPageButton.disabled = state.page <= 1;
+      nextPageButton.disabled = state.page >= state.totalPages;
+    }
   }
 
-  function initDetailPage() {
+  async function initDetailPage() {
     const detailTarget = document.getElementById("promptDetail");
     const relatedTarget = document.getElementById("relatedPrompts");
     const relatedSection = document.getElementById("relatedSection");
@@ -146,7 +240,8 @@
 
     const params = new URLSearchParams(window.location.search);
     const promptId = params.get("id");
-    const currentPrompt = vaultPrompts.find((item) => String(item.id) === String(promptId));
+    const payload = await loadPromptDetail(promptId);
+    const currentPrompt = payload.prompt;
 
     if (!currentPrompt) {
       detailTarget.appendChild(
@@ -160,10 +255,11 @@
     }
 
     document.title = `${currentPrompt.title} | AI Prompt Vault`;
+    detailTarget.innerHTML = "";
     detailTarget.appendChild(createDetailLayout(currentPrompt));
     analytics.track("prompt_viewed", { id: currentPrompt.id, title: currentPrompt.title });
 
-    const related = getRelatedPrompts(currentPrompt);
+    const related = Array.isArray(payload.related) ? payload.related : [];
     relatedTarget.innerHTML = "";
 
     if (related.length === 0) {
@@ -177,6 +273,18 @@
 
     refreshMotion(detailTarget);
     refreshMotion(relatedTarget);
+
+    if (liveChannel) {
+      liveChannel.addEventListener("message", () => {
+        window.location.reload();
+      });
+    }
+
+    window.addEventListener("storage", (event) => {
+      if (event.key === "prompt-vault-update") {
+        window.location.reload();
+      }
+    });
   }
 
   function initDownloaderPage() {
@@ -537,6 +645,72 @@
       return await response.json();
     } catch (error) {
       return {};
+    }
+  }
+
+  async function loadPromptPage(params) {
+    const searchParams = new URLSearchParams();
+    searchParams.set("page", String(params.page || 1));
+    searchParams.set("limit", String(params.limit || 10));
+
+    if (params.query) {
+      searchParams.set("query", params.query);
+    }
+
+    if (params.category && params.category !== "All") {
+      searchParams.set("category", params.category);
+    }
+
+    try {
+      const response = await fetch(`/api/prompts?${searchParams.toString()}`);
+      const payload = await parseJsonSafely(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to load prompts.");
+      }
+
+      return payload;
+    } catch (error) {
+      const filtered = fallbackPrompts.filter((prompt) =>
+        matchesPrompt(prompt, {
+          query: params.query || "",
+          activeFilter: params.category || "All"
+        })
+      );
+      const totalPages = Math.max(1, Math.ceil(filtered.length / (params.limit || 10)));
+      const page = Math.min(params.page || 1, totalPages);
+      const start = (page - 1) * (params.limit || 10);
+
+      return {
+        prompts: filtered.slice(start, start + (params.limit || 10)),
+        page,
+        limit: params.limit || 10,
+        total: filtered.length,
+        totalAll: fallbackPrompts.length,
+        totalPages,
+        categories: ["All"].concat(
+          [...new Set(fallbackPrompts.map((prompt) => prompt.category).filter(Boolean))].sort()
+        )
+      };
+    }
+  }
+
+  async function loadPromptDetail(promptId) {
+    try {
+      const response = await fetch(`/api/prompts/${encodeURIComponent(promptId || "")}`);
+      const payload = await parseJsonSafely(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to load prompt.");
+      }
+
+      return payload;
+    } catch (error) {
+      const prompt = fallbackPrompts.find((item) => String(item.id) === String(promptId));
+      return {
+        prompt: prompt || null,
+        related: prompt ? getRelatedPrompts(prompt) : []
+      };
     }
   }
 
@@ -1109,7 +1283,7 @@
   }
 
   function getRelatedPrompts(currentPrompt) {
-    return vaultPrompts
+    return fallbackPrompts
       .filter((prompt) => prompt.id !== currentPrompt.id)
       .sort((left, right) => scorePrompt(right, currentPrompt) - scorePrompt(left, currentPrompt))
       .slice(0, 3);

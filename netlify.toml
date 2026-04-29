@@ -4,7 +4,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["express", "instagram-url-direct", "serverless-http", "youtubei.js"]
+  external_node_modules = ["@netlify/blobs", "express", "instagram-url-direct", "serverless-http", "youtubei.js"]
 
 [[redirects]]
   from = "/api/*"
