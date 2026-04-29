@@ -65,23 +65,47 @@ Ultra-realistic cinematic party scene poster, vertical composition (9.16 ratio),
   },
   {
     id: 2,
-    title: "Luxury Skincare Reel Hook",
+    title: "Pavazhamalli Trending Reel Hook",
     category: "Instagram Reels",
     format: "Hook script + visual angle",
     description:
-      "A faceless short-form content prompt for premium skincare creators pushing a polished, saves-worthy hook.",
-    image: createPreview({
-      title: "Luxury Skincare Reel Hook",
+      "Instagram trending Pavazhamalli reel hook formula with a cinematic lighting angle designed.",
+    image: "/Assets/Pavazhamalli.png",
+    // createPreview({
+      title: "Pavazhamalli Trending Reel Hook",
       badge: "Reel Hook",
-      lineOne: "Luxury",
-      lineTwo: "Skincare Hook",
+      lineOne: "Sun kisses",
+      lineTwo: "Pavazhamalli Hook",
       caption: "Premium lighting, tactile textures, clean UGC-style pacing",
       tool: "ChatGPT + CapCut",
-      start: "#0b0d17",
-      end: "#1f5b72",
-      glow: "#54e8ff"
-    }),
-    prompt: `Write a 15-second Instagram reel hook for a luxury skincare brand. The video is faceless and uses close-up product shots, creamy textures, soft window light, and elegant bathroom styling. The script should open with a curiosity gap, feel premium instead of salesy, and end with a subtle CTA that encourages viewers to save the reel. Provide an on-screen text hook, voiceover line, and 5 quick B-roll shot ideas.`,
+      // start: "#0b0d17",
+      // end: "#1f5b72",
+      // glow: "#54e8ff"
+    // }),
+    prompt: `Ultra-realistic cinematic collage of a young woman using the uploaded face exactly. The image is composed of multiple rectangular photo panels layered vertically and diagonally, creating a scrapbook-style layout. Each panel shows close-up and mid-shot portraits of the same girl in a dim indoor room.
+
+Lighting: strong, warm, golden-orange direct flash lighting hitting the face from the front-left, creating high contrast, deep shadows, and a glowing skin effect. Background remains dark with visible window curtains slightly illuminated. Harsh highlights on cheekbones, nose, and lips. Slight film grain and soft blur for a dreamy vintage feel.
+
+Color grading: intense amber, burnt orange, and golden tones dominating the entire image.
+
+High saturation, slightly crushed blacks, and glowing highlights.
+
+Subject styling: messy tied-back hair with loose strands falling on face, glossy lips, subtle eyeliner, dewy skin. Wearing a delicate necklace with small pendants and a casual off-shoulder
+white top.
+
+Composition details:
+Top panel: serious expression, looking directly at camera.
+Middle panel: cropped lips and necklace close-up.
+Bottom left: extreme close-up of eyes with strong shadow split across face.
+Bottom right: angled portrait with soft side gaze.
+Panels overlap slightly with uneven spacing for aesthetic collage look.
+Overlay elements: Add realistic flower stickers (lilies in orange, cream, and red tones) placed around the collage.
+Add a music player Ut card in the center-left area with a soft rounded design.
+Music player text: 
+Title: "Pavazhamalli"
+Artist: "Sai"
+Include minimal playback bar and icons (play/pause, skip).
+Final touches: Slight glow/bloom effect on highlights Subtle vignette around edges Flash photography look, like taken on a digital camera at night Maintain natural skin texture, avoid over-smoothing.`,
     tools: ["ChatGPT", "CapCut", "Instagram"],
     tips:
       "Ask for 3 hook styles in one generation: curiosity, problem-solution, and aspiration. Then pair the strongest line with fast 0.5 to 0.8 second cuts.",
