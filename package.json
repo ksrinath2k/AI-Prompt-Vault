@@ -9,6 +9,7 @@
     "start": "node server/server.js"
   },
   "dependencies": {
+    "@netlify/blobs": "^10.7.4",
     "express": "^4.21.2",
     "instagram-url-direct": "^2.0.7",
     "serverless-http": "^4.0.0",
