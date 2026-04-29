@@ -1,14 +1,20 @@
 const express = require("express");
+const fs = require("node:fs/promises");
 const path = require("node:path");
 const { createHmac, timingSafeEqual } = require("node:crypto");
 const { Readable } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
+const vm = require("node:vm");
 const { instagramGetUrl } = require("instagram-url-direct");
 
 const app = express();
 const rootDir = path.resolve(process.cwd());
+const assetsDir = path.join(rootDir, "Assets");
+const promptDataPath = path.join(rootDir, "data.js");
 const mediaTokenTtlMs = 20 * 60 * 1000;
 const mediaTokenSecret = process.env.MEDIA_TOKEN_SECRET || "ai-prompt-vault-local-secret";
+const adminRoutePath = "/vault-admin-8c7f5k2m";
+const adminWriteKey = process.env.ADMIN_WRITE_KEY || "vault-admin-8c7f5k2m";
 const instagramUserAgent =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 const youtubeUserAgent =
@@ -16,8 +22,82 @@ const youtubeUserAgent =
 
 let youtubeClientPromise;
 
-app.use(express.json());
+app.use(express.json({ limit: "15mb" }));
 app.use(express.static(rootDir));
+
+app.get(adminRoutePath, (req, res) => {
+  res.type("html").send(renderAdminPage());
+});
+
+app.get("/api/admin/prompts", async (req, res) => {
+  if (!isAuthorizedAdminRequest(req)) {
+    return res.status(403).json({ error: "Admin access denied." });
+  }
+
+  try {
+    const prompts = sortPromptsNewestFirst(await readPromptData());
+    return res.json({ prompts });
+  } catch (error) {
+    return res.status(500).json({ error: "Unable to load prompts right now." });
+  }
+});
+
+app.post("/api/admin/prompts", async (req, res) => {
+  if (!isAuthorizedAdminRequest(req)) {
+    return res.status(403).json({ error: "Admin access denied." });
+  }
+
+  try {
+    const currentPrompts = await readPromptData();
+    const promptInput = await normalizePromptInput(req.body, currentPrompts);
+    const existingIndex = currentPrompts.findIndex(
+      (entry) => Number(entry.id) === Number(promptInput.id)
+    );
+    let savedPromptId;
+
+    let nextPrompts;
+    if (existingIndex >= 0) {
+      const existingPrompt = currentPrompts[existingIndex];
+      savedPromptId = existingPrompt.id;
+      const updatedPrompt = {
+        ...existingPrompt,
+        ...promptInput,
+        id: existingPrompt.id,
+        createdAt: existingPrompt.createdAt || promptInput.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      nextPrompts = currentPrompts.slice();
+      nextPrompts[existingIndex] = updatedPrompt;
+    } else {
+      const nextId = getNextPromptId(currentPrompts);
+      savedPromptId = nextId;
+      const createdAt = new Date().toISOString();
+      nextPrompts = [
+        {
+          ...promptInput,
+          id: nextId,
+          createdAt,
+          updatedAt: createdAt
+        },
+        ...currentPrompts
+      ];
+    }
+
+    const sortedPrompts = sortPromptsNewestFirst(nextPrompts);
+    await writePromptData(sortedPrompts);
+
+    return res.json({
+      prompt: sortedPrompts.find((entry) => Number(entry.id) === Number(savedPromptId)),
+      prompts: sortedPrompts
+    });
+  } catch (error) {
+    const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 400;
+    return res.status(statusCode).json({
+      error: error.publicMessage || "We could not save that prompt right now."
+    });
+  }
+});
 
 app.post("/api/download", async (req, res) => {
   const submittedUrl = typeof req.body?.url === "string" ? req.body.url.trim() : "";
@@ -663,4 +743,330 @@ function createPublicError(message, statusCode, cause) {
   error.statusCode = statusCode;
   error.cause = cause;
   return error;
+}
+
+function isAuthorizedAdminRequest(req) {
+  const submittedKey = String(req.get("x-admin-key") || "").trim();
+
+  if (!submittedKey || submittedKey.length !== adminWriteKey.length) {
+    return false;
+  }
+
+  return timingSafeEqual(Buffer.from(submittedKey), Buffer.from(adminWriteKey));
+}
+
+async function readPromptData() {
+  const source = await fs.readFile(promptDataPath, "utf8");
+  const sandbox = {
+    window: {},
+    encodeURIComponent
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(source, sandbox, { filename: promptDataPath });
+
+  if (!Array.isArray(sandbox.window.prompts)) {
+    throw createPublicError("Prompt data is not readable.", 500);
+  }
+
+  return sandbox.window.prompts.map((prompt) => ({ ...prompt }));
+}
+
+async function writePromptData(prompts) {
+  const serialized = `window.prompts = ${JSON.stringify(prompts, null, 2)};\n`;
+  await fs.writeFile(promptDataPath, serialized, "utf8");
+}
+
+async function normalizePromptInput(body, currentPrompts) {
+  const title = readRequiredField(body.title, "Title");
+  const category = readRequiredField(body.category, "Category");
+  const format = readRequiredField(body.format, "Format");
+  const description = readRequiredField(body.description, "Description");
+  const prompt = readRequiredField(body.prompt, "Prompt");
+  const tips = readRequiredField(body.tips, "Tips");
+  const tools = normalizeStringList(body.tools);
+  const variations = normalizeStringList(body.variations);
+
+  if (tools.length === 0) {
+    throw createPublicError("Add at least one tool.", 400);
+  }
+
+  const requestedId = Number(body.id);
+  const existingPrompt = Number.isInteger(requestedId)
+    ? currentPrompts.find((entry) => Number(entry.id) === requestedId)
+    : null;
+
+  const imagePath =
+    (await maybeSaveUploadedImage(body.imageUpload)) ||
+    normalizeOptionalString(body.image) ||
+    normalizeOptionalString(existingPrompt?.image);
+
+  if (!imagePath) {
+    throw createPublicError("Upload an image or provide an image path.", 400);
+  }
+
+  return {
+    id: existingPrompt ? existingPrompt.id : requestedId || undefined,
+    title,
+    category,
+    format,
+    description,
+    image: imagePath,
+    prompt,
+    tools,
+    tips,
+    variations,
+    createdAt: existingPrompt?.createdAt,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function readRequiredField(value, label) {
+  const normalized = normalizeOptionalString(value);
+  if (!normalized) {
+    throw createPublicError(`${label} is required.`, 400);
+  }
+
+  return normalized;
+}
+
+function normalizeOptionalString(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim();
+}
+
+function normalizeStringList(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => normalizeOptionalString(entry))
+      .filter(Boolean);
+  }
+
+  return String(value || "")
+    .split(/\r?\n|,/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function getNextPromptId(prompts) {
+  return prompts.reduce((highest, prompt) => {
+    const numericId = Number(prompt.id);
+    return Number.isInteger(numericId) ? Math.max(highest, numericId) : highest;
+  }, 0) + 1;
+}
+
+function sortPromptsNewestFirst(prompts) {
+  return prompts.slice().sort((left, right) => {
+    const rightValue = getPromptSortValue(right);
+    const leftValue = getPromptSortValue(left);
+    return rightValue - leftValue || Number(right.id || 0) - Number(left.id || 0);
+  });
+}
+
+function getPromptSortValue(prompt) {
+  const timestamp = Date.parse(prompt.updatedAt || prompt.createdAt || "");
+  if (Number.isFinite(timestamp)) {
+    return timestamp;
+  }
+
+  const numericId = Number(prompt.id);
+  return Number.isFinite(numericId) ? numericId : 0;
+}
+
+async function maybeSaveUploadedImage(imageUpload) {
+  if (!imageUpload || typeof imageUpload !== "object") {
+    return "";
+  }
+
+  const dataUrl = typeof imageUpload.dataUrl === "string" ? imageUpload.dataUrl : "";
+  const mimeType = typeof imageUpload.type === "string" ? imageUpload.type : "";
+  const originalName = typeof imageUpload.name === "string" ? imageUpload.name : "prompt-image";
+  const parsed = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+
+  if (!parsed || !parsed[2]) {
+    throw createPublicError("The uploaded image format was not recognized.", 400);
+  }
+
+  const finalMimeType = mimeType || parsed[1];
+  const extension = getImageExtension(finalMimeType, originalName);
+
+  if (!extension) {
+    throw createPublicError("Only JPG, PNG, GIF, SVG, and WebP images are supported.", 400);
+  }
+
+  const fileName = `${Date.now()}-${sanitizeFileSegment(originalName.replace(/\.[^.]+$/, ""))}.${extension}`;
+  const outputPath = path.join(assetsDir, fileName);
+  const bytes = Buffer.from(parsed[2], "base64");
+
+  await fs.mkdir(assetsDir, { recursive: true });
+  await fs.writeFile(outputPath, bytes);
+  return `/Assets/${fileName}`;
+}
+
+function getImageExtension(mimeType, originalName) {
+  const normalizedMimeType = String(mimeType).toLowerCase();
+  const mimeMap = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/svg+xml": "svg"
+  };
+
+  if (mimeMap[normalizedMimeType]) {
+    return mimeMap[normalizedMimeType];
+  }
+
+  const extension = path.extname(originalName).replace(".", "").toLowerCase();
+  return ["jpg", "jpeg", "png", "webp", "gif", "svg"].includes(extension)
+    ? extension === "jpeg"
+      ? "jpg"
+      : extension
+    : "";
+}
+
+function renderAdminPage() {
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>AI Prompt Vault Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body data-page="admin">
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand-mark" href="/index.html" aria-label="AI Prompt Vault home">
+          <span class="brand-mark__orb"></span>
+          <span>AI Prompt Vault</span>
+        </a>
+        <div class="topbar-actions">
+          <span class="topbar-badge">Private admin console</span>
+          <a class="ghost-link" href="/index.html">View public library</a>
+        </div>
+      </header>
+
+      <main>
+        <section class="admin-shell panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Admin flow</p>
+              <h1 class="admin-title">Upload or update prompts without editing IDs by hand</h1>
+            </div>
+            <p class="section-copy section-copy--tight">
+              This URL is intentionally private. New and updated prompts are saved into <code>data.js</code> automatically, and the public library shows the latest items first.
+            </p>
+          </div>
+
+          <div class="admin-layout">
+            <section class="glass-card admin-card">
+              <div class="admin-card__header">
+                <h2>Prompt form</h2>
+                <button class="ghost-button utility-button" id="newPromptButton" type="button">New prompt</button>
+              </div>
+
+              <form class="admin-form" id="adminPromptForm">
+                <input id="promptId" name="id" type="hidden" />
+
+                <label class="input-stack" for="promptSelect">
+                  <span class="field-label">Edit existing prompt</span>
+                  <select class="download-input" id="promptSelect">
+                    <option value="">Create a new prompt</option>
+                  </select>
+                </label>
+
+                <div class="admin-grid">
+                  <label class="input-stack" for="promptTitle">
+                    <span class="field-label">Title</span>
+                    <input class="download-input" id="promptTitle" name="title" type="text" required />
+                  </label>
+
+                  <label class="input-stack" for="promptCategory">
+                    <span class="field-label">Category</span>
+                    <input class="download-input" id="promptCategory" name="category" type="text" required />
+                  </label>
+                </div>
+
+                <div class="admin-grid">
+                  <label class="input-stack" for="promptFormat">
+                    <span class="field-label">Format</span>
+                    <input class="download-input" id="promptFormat" name="format" type="text" required />
+                  </label>
+
+                  <label class="input-stack" for="promptImage">
+                    <span class="field-label">Image path or URL</span>
+                    <input class="download-input" id="promptImage" name="image" type="text" placeholder="/Assets/example.png or https://..." />
+                  </label>
+                </div>
+
+                <label class="input-stack" for="promptImageFile">
+                  <span class="field-label">Upload image</span>
+                  <input class="download-input download-input--file" id="promptImageFile" name="imageFile" type="file" accept="image/*" />
+                  <p class="input-hint">Upload a file to save it into the local <code>Assets/</code> folder automatically.</p>
+                </label>
+
+                <label class="input-stack" for="promptDescription">
+                  <span class="field-label">Description</span>
+                  <textarea class="download-input download-input--textarea" id="promptDescription" name="description" required></textarea>
+                </label>
+
+                <label class="input-stack" for="promptBody">
+                  <span class="field-label">Prompt</span>
+                  <textarea class="download-input download-input--textarea download-input--prompt" id="promptBody" name="prompt" required></textarea>
+                </label>
+
+                <label class="input-stack" for="promptTools">
+                  <span class="field-label">Tools</span>
+                  <textarea class="download-input download-input--textarea" id="promptTools" name="tools" placeholder="One per line or comma separated" required></textarea>
+                </label>
+
+                <label class="input-stack" for="promptTips">
+                  <span class="field-label">Tips</span>
+                  <textarea class="download-input download-input--textarea" id="promptTips" name="tips" required></textarea>
+                </label>
+
+                <label class="input-stack" for="promptVariations">
+                  <span class="field-label">Variations</span>
+                  <textarea class="download-input download-input--textarea" id="promptVariations" name="variations" placeholder="One variation per line"></textarea>
+                </label>
+
+                <div class="cta-row">
+                  <button class="button button--primary" id="savePromptButton" type="submit">Save prompt</button>
+                  <p class="admin-status" id="adminStatus" role="status" aria-live="polite"></p>
+                </div>
+              </form>
+            </section>
+
+            <aside class="glass-card admin-card admin-card--list">
+              <div class="admin-card__header">
+                <h2>Latest prompts</h2>
+                <span class="pill" id="adminPromptCount">0 total</span>
+              </div>
+              <div class="admin-list" id="adminPromptList"></div>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      window.promptVaultAdmin = {
+        apiKey: ${JSON.stringify(adminWriteKey)}
+      };
+    </script>
+    <script src="/admin.js"></script>
+  </body>
+</html>`;
 }

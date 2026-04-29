@@ -13,6 +13,12 @@
   force = true
 
 [[redirects]]
+  from = "/vault-admin-8c7f5k2m"
+  to = "/.netlify/functions/api/vault-admin-8c7f5k2m"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/downloader"
   to = "/downloader.html"
   status = 200

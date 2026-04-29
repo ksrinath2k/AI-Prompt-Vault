@@ -1,5 +1,7 @@
 (function () {
-  const vaultPrompts = Array.isArray(window.prompts) ? window.prompts : [];
+  const vaultPrompts = Array.isArray(window.prompts)
+    ? window.prompts.slice().sort(sortPromptsNewestFirst)
+    : [];
   const toastElement = document.getElementById("toast");
   const analytics = window.promptVaultAnalytics || {
     track(eventName, payload) {
@@ -30,6 +32,16 @@
     }
 
     initMotion();
+  }
+
+  function sortPromptsNewestFirst(left, right) {
+    return getPromptTimestamp(right) - getPromptTimestamp(left) ||
+      Number(right.id || 0) - Number(left.id || 0);
+  }
+
+  function getPromptTimestamp(prompt) {
+    const timestamp = Date.parse(prompt.updatedAt || prompt.createdAt || "");
+    return Number.isFinite(timestamp) ? timestamp : Number(prompt.id) || 0;
   }
 
   function updateYear() {

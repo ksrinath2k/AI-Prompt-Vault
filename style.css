@@ -75,7 +75,9 @@ a {
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
 }
 
@@ -96,6 +98,7 @@ button {
 .library,
 .detail-shell,
 .related-section,
+.admin-shell,
 .downloader-shell {
   position: relative;
   z-index: 1;
@@ -176,6 +179,7 @@ button {
 .library,
 .detail-shell,
 .related-section,
+.admin-shell,
 .downloader-shell {
   overflow: hidden;
   border-radius: var(--radius-xl);
@@ -195,6 +199,7 @@ button {
 .detail-shell::before,
 .library::before,
 .related-section::before,
+.admin-shell::before,
 .downloader-shell::before {
   content: "";
   position: absolute;
@@ -580,11 +585,16 @@ button {
 .library,
 .related-section,
 .detail-shell,
+.admin-shell,
 .downloader-shell {
   padding: 1.25rem;
 }
 
 .downloader-shell {
+  margin-top: 1rem;
+}
+
+.admin-shell {
   margin-top: 1rem;
 }
 
@@ -686,6 +696,47 @@ button {
   gap: 0.85rem;
 }
 
+.admin-layout {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.admin-card {
+  padding: 1.15rem;
+}
+
+.admin-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-card__header h2,
+.admin-title {
+  margin: 0;
+  font-family: "Space Grotesk", "Avenir Next", sans-serif;
+  letter-spacing: -0.05em;
+}
+
+.admin-title {
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
+  line-height: 0.96;
+  max-width: 14ch;
+}
+
+.admin-form {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.admin-grid {
+  display: grid;
+  gap: 0.95rem;
+}
+
 .field-label {
   color: var(--muted-strong);
   font-size: 0.94rem;
@@ -726,6 +777,22 @@ button {
     transform 180ms ease;
 }
 
+.download-input--textarea {
+  min-height: 8rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  resize: vertical;
+}
+
+.download-input--prompt {
+  min-height: 15rem;
+}
+
+.download-input--file {
+  min-height: auto;
+  padding: 0.8rem 1rem;
+}
+
 .download-input::placeholder {
   color: rgba(201, 210, 227, 0.52);
 }
@@ -752,6 +819,59 @@ button {
   color: #ff9b9b;
   font-size: 0.92rem;
   font-weight: 600;
+}
+
+.admin-status {
+  margin: 0;
+  align-self: center;
+  color: var(--muted-strong);
+  font-weight: 600;
+}
+
+.admin-status.is-error {
+  color: #ff9b9b;
+}
+
+.admin-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-list__item {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 1rem;
+  text-align: left;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  transition:
+    transform 180ms var(--ease-premium, ease),
+    border-color 180ms var(--ease-premium, ease),
+    background 180ms var(--ease-premium, ease);
+}
+
+.admin-list__item:hover,
+.admin-list__item:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(129, 168, 255, 0.24);
+  background:
+    linear-gradient(180deg, rgba(129, 168, 255, 0.12), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.03);
+}
+
+.admin-list__item strong {
+  font-size: 1rem;
+}
+
+.admin-list__meta,
+.admin-list__time {
+  color: var(--muted);
+  font-size: 0.88rem;
 }
 
 .status-banner {
@@ -1643,6 +1763,7 @@ button {
   .library,
   .related-section,
   .detail-shell,
+  .admin-shell,
   .downloader-shell {
     padding: 1.45rem;
   }
@@ -1679,8 +1800,16 @@ button {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .admin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .input-stack {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .admin-form .input-stack {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .download-links {
@@ -1702,6 +1831,16 @@ button {
     padding-top: 1rem;
   }
 
+  .admin-layout {
+    grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
+    align-items: start;
+  }
+
+  .admin-card--list {
+    position: sticky;
+    top: 1rem;
+  }
+
   .prompt-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1716,6 +1855,7 @@ button {
 
   .library,
   .related-section,
+  .admin-shell,
   .downloader-shell {
     padding: 1.55rem;
   }
