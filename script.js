@@ -261,6 +261,12 @@
     applyPlatformCopy(state.platform);
     refreshMotion(result);
 
+    if (window.location.protocol === "file:") {
+      status.textContent =
+        "This downloader will not work from a file URL. Open it through http://localhost:3000/downloader.html or your Netlify site.";
+      status.hidden = false;
+    }
+
     window.addEventListener("pageshow", (event) => {
       if (event.persisted) {
         resetDownloaderState();
