@@ -27,6 +27,7 @@
 *::before,
 *::after {
   box-sizing: border-box;
+
 }
 
 html {
@@ -585,6 +586,17 @@ button {
 
 .downloader-shell {
   margin-top: 1rem;
+}
+
+.download-nav,
+.downloader-hero,
+.downloader-support-grid,
+.download-workspace,
+.download-result,
+.result-preview,
+.result-content {
+  position: relative;
+  z-index: 1;
 }
 
 .download-nav {
@@ -1433,6 +1445,7 @@ button {
   padding: 1.75rem 0 1rem;
 }
 
+
 .site-footer p {
   margin: 0;
 }
@@ -1444,7 +1457,7 @@ button {
     opacity 700ms var(--ease-premium, ease),
     transform 700ms var(--ease-premium, ease);
   transition-delay: var(--reveal-delay, 0ms);
-  will-change: opacity, transform;
+  will-change: auto;
 }
 
 [data-reveal].is-visible {
@@ -1531,20 +1544,80 @@ button {
 }
 
 @media (max-width: 719px) {
+  body::before {
+    opacity: 0.18;
+  }
+
+  .hero,
+  .library,
+  .detail-shell,
+  .related-section,
+  .downloader-shell {
+    backdrop-filter: none;
+  }
+
   .topbar-badge {
     display: none;
+  }
+
+  .download-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .download-nav__item,
+  .mini-panel,
+  .downloader-card,
+  .result-preview,
+  .result-content,
+  .step-card {
+    transform: none !important;
+  }
+
+  .download-nav__item:hover,
+  .download-nav__item:focus-visible,
+  .download-nav__item.is-active,
+  .mini-panel:hover {
+    transform: none;
+  }
+
+  .utility-row > * {
+    flex: 1 1 calc(50% - 0.35rem);
+  }
+
+  .download-links {
+    grid-template-columns: 1fr;
+  }
+
+  .result-preview--video {
+    padding: 0.85rem;
+  }
+
+  .result-video {
+    width: 100%;
+    max-width: 100%;
   }
 
   .prompt-card__footer,
   .variation-card__header,
   .cta-head,
-  .prompt-actions--hero {
+  .prompt-actions--hero,
+  .result-header {
     align-items: flex-start;
     flex-direction: column;
   }
 
   .hero-tool-summary {
     order: 2;
+  }
+
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none !important;
+  }
+
+  .interactive-surface::before {
+    display: none;
   }
 }
 
