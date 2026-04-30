@@ -202,11 +202,21 @@
         : preference === "dark"
           ? "Theme: Dark"
           : "Theme: System";
+    const icon =
+      preference === "light"
+        ? "☀"
+        : preference === "dark"
+          ? "☾"
+          : "◐";
 
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-      button.textContent = label;
+      const iconNode = button.querySelector(".theme-toggle__icon");
+      if (iconNode) {
+        iconNode.textContent = icon;
+      }
+      button.dataset.tooltip = `${label} (click to change)`;
       button.setAttribute("aria-label", label);
-      button.setAttribute("title", "Cycle theme mode");
+      button.setAttribute("title", `${label} (click to change)`);
     });
   }
 

@@ -1290,7 +1290,8 @@ function renderAdminPage() {
           <span class="topbar-badge">Private admin console</span>
           <a class="ghost-link" href="/index.html">View public library</a>
           <button class="ghost-button theme-toggle" type="button" data-theme-toggle>
-            Theme: System
+            <span class="theme-toggle__icon" aria-hidden="true">◐</span>
+            <span class="sr-only">Theme</span>
           </button>
         </div>
       </header>

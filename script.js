@@ -147,11 +147,21 @@
         : preference === "dark"
           ? "Theme: Dark"
           : "Theme: System";
+    const icon =
+      preference === "light"
+        ? "☀"
+        : preference === "dark"
+          ? "☾"
+          : "◐";
 
     document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-      button.textContent = label;
+      const iconNode = button.querySelector(".theme-toggle__icon");
+      if (iconNode) {
+        iconNode.textContent = icon;
+      }
+      button.dataset.tooltip = `${label} (click to change)`;
       button.setAttribute("aria-label", label);
-      button.setAttribute("title", "Cycle theme mode");
+      button.setAttribute("title", `${label} (click to change)`);
     });
   }
 
@@ -982,10 +992,19 @@
     const actions = document.createElement("div");
     actions.className = "prompt-card__actions";
 
+    const link = document.createElement("a");
+    link.className = compact ? "ghost-button" : "button button--secondary";
+    link.href = `prompt.html?id=${encodeURIComponent(prompt.id)}`;
+    link.textContent = compact ? "Open Prompt" : "View Prompt";
+    link.addEventListener("click", () => {
+      analytics.track("prompt_card_clicked", { id: prompt.id, title: prompt.title });
+    });
+    actions.appendChild(link);
+
     if (!compact) {
       const copyButton = document.createElement("button");
       copyButton.type = "button";
-      copyButton.className = "ghost-button utility-button";
+      copyButton.className = "button button--primary utility-button";
       copyButton.textContent = "Copy Prompt";
       copyButton.addEventListener("click", async () => {
         const copied = await copyText(prompt.prompt);
@@ -999,15 +1018,6 @@
       });
       actions.appendChild(copyButton);
     }
-
-    const link = document.createElement("a");
-    link.className = compact ? "ghost-button" : "button button--secondary";
-    link.href = `prompt.html?id=${encodeURIComponent(prompt.id)}`;
-    link.textContent = compact ? "Open Prompt" : "View Prompt";
-    link.addEventListener("click", () => {
-      analytics.track("prompt_card_clicked", { id: prompt.id, title: prompt.title });
-    });
-    actions.appendChild(link);
 
     topRow.appendChild(formatPill);
     body.append(topRow, title, meta, toolList);
