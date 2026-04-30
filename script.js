@@ -1,6 +1,6 @@
 (function () {
   const fallbackPrompts = Array.isArray(window.prompts)
-    ? window.prompts.slice().sort(sortPromptsNewestFirst)
+    ? window.prompts.map(normalizePrompt).sort(sortPromptsNewestFirst)
     : [];
   const liveChannel =
     typeof BroadcastChannel === "function"
@@ -41,6 +41,25 @@
   function sortPromptsNewestFirst(left, right) {
     return getPromptTimestamp(right) - getPromptTimestamp(left) ||
       Number(right.id || 0) - Number(left.id || 0);
+  }
+
+  function normalizePrompt(prompt) {
+    const safePrompt = prompt && typeof prompt === "object" ? prompt : {};
+
+    return {
+      id: Number(safePrompt.id) || 0,
+      title: typeof safePrompt.title === "string" ? safePrompt.title : "Untitled Prompt",
+      category: typeof safePrompt.category === "string" ? safePrompt.category : "Uncategorized",
+      format: typeof safePrompt.format === "string" ? safePrompt.format : "Prompt",
+      description: typeof safePrompt.description === "string" ? safePrompt.description : "",
+      image: typeof safePrompt.image === "string" ? safePrompt.image : "",
+      prompt: typeof safePrompt.prompt === "string" ? safePrompt.prompt : "",
+      tools: Array.isArray(safePrompt.tools) ? safePrompt.tools.filter(Boolean) : [],
+      tips: typeof safePrompt.tips === "string" ? safePrompt.tips : "",
+      variations: Array.isArray(safePrompt.variations) ? safePrompt.variations.filter(Boolean) : [],
+      createdAt: safePrompt.createdAt,
+      updatedAt: safePrompt.updatedAt
+    };
   }
 
   function getPromptTimestamp(prompt) {
@@ -94,6 +113,9 @@
       categories: ["All"]
     };
 
+    promptCount.textContent = String(fallbackPrompts.length);
+    renderFallbackLibrary();
+
     searchInput.addEventListener("input", () => {
       state.query = searchInput.value.trim();
       state.page = 1;
@@ -141,6 +163,16 @@
 
     await loadPage();
 
+    function renderFallbackLibrary() {
+      state.categories = ["All"].concat(
+        [...new Set(fallbackPrompts.map((prompt) => prompt.category).filter(Boolean))].sort()
+      );
+      state.totalPages = Math.max(1, Math.ceil(fallbackPrompts.length / state.limit));
+      renderFilters();
+      renderLibrary(fallbackPrompts.slice(0, state.limit), fallbackPrompts.length);
+      renderPagination(fallbackPrompts.length);
+    }
+
     async function loadPage(silent) {
       if (!silent) {
         resultsLabel.textContent = "Loading prompts...";
@@ -164,7 +196,10 @@
 
       promptCount.textContent = String(payload.totalAll || payload.total || 0);
       renderFilters();
-      renderLibrary(payload.prompts || [], payload.total || 0);
+      renderLibrary(
+        Array.isArray(payload.prompts) ? payload.prompts.map(normalizePrompt) : [],
+        payload.total || 0
+      );
       renderPagination(payload.total || 0);
     }
 
@@ -241,7 +276,7 @@
     const params = new URLSearchParams(window.location.search);
     const promptId = params.get("id");
     const payload = await loadPromptDetail(promptId);
-    const currentPrompt = payload.prompt;
+    const currentPrompt = payload.prompt ? normalizePrompt(payload.prompt) : null;
 
     if (!currentPrompt) {
       detailTarget.appendChild(
@@ -259,7 +294,7 @@
     detailTarget.appendChild(createDetailLayout(currentPrompt));
     analytics.track("prompt_viewed", { id: currentPrompt.id, title: currentPrompt.title });
 
-    const related = Array.isArray(payload.related) ? payload.related : [];
+    const related = Array.isArray(payload.related) ? payload.related.map(normalizePrompt) : [];
     relatedTarget.innerHTML = "";
 
     if (related.length === 0) {
@@ -662,7 +697,18 @@
     }
 
     try {
-      const response = await fetch(`/api/prompts?${searchParams.toString()}`);
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timeoutId = controller
+        ? window.setTimeout(() => {
+            controller.abort();
+          }, 1800)
+        : null;
+      const response = await fetch(`/api/prompts?${searchParams.toString()}`, {
+        signal: controller ? controller.signal : undefined
+      });
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
       const payload = await parseJsonSafely(response);
 
       if (!response.ok) {
@@ -682,7 +728,7 @@
       const start = (page - 1) * (params.limit || 10);
 
       return {
-        prompts: filtered.slice(start, start + (params.limit || 10)),
+        prompts: filtered.slice(start, start + (params.limit || 10)).map(normalizePrompt),
         page,
         limit: params.limit || 10,
         total: filtered.length,
@@ -708,7 +754,7 @@
     } catch (error) {
       const prompt = fallbackPrompts.find((item) => String(item.id) === String(promptId));
       return {
-        prompt: prompt || null,
+        prompt: prompt ? normalizePrompt(prompt) : null,
         related: prompt ? getRelatedPrompts(prompt) : []
       };
     }
