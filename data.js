@@ -147,7 +147,7 @@ Final touches: Slight glow/bloom effect on highlights Subtle vignette around edg
   {
     id: 4,
     title: "Viral Travel Montage Cut",
-    category: "Video Editing",
+    category: "Image Generation",
     format: "Edit plan prompt",
     description:
       "A fast-cut travel edit system designed for retention-heavy reels with beat drops, speed ramps, and scroll-stopping transitions.",
@@ -178,118 +178,7 @@ Style: Professional, minimal, emotional photography, focusing on feelings and vi
       "Create a version optimized for a fast Afro-house beat with aggressive speed ramps and flash transitions."
     ]
   },
-  {
-    id: 5,
-    title: "Faceless Productivity Reel",
-    category: "Instagram Reels",
-    format: "Script + shot prompt",
-    description:
-      "A polished productivity format for creators selling routines, templates, or digital products without appearing on camera.",
-    image: createPreview({
-      title: "Faceless Productivity Reel",
-      badge: "Creator Prompt",
-      lineOne: "Faceless",
-      lineTwo: "Productivity",
-      caption: "Desk setup, tight pacing, dopamine-friendly routine cues",
-      tool: "ChatGPT + Notion",
-      start: "#08090f",
-      end: "#2b394d",
-      glow: "#97adff"
-    }),
-    prompt: `Write a faceless Instagram reel script for creators who want to show a productive morning workflow without talking on camera. The reel should use desk setup shots, laptop close-ups, coffee making, to-do list scenes, and quick app screen recordings. Provide a 12-second structure with a high-performing hook, text overlays, B-roll sequence, and a low-pressure CTA that points viewers to a digital template or guide.`,
-    tools: ["ChatGPT", "Notion", "CapCut"],
-    tips:
-      "Combine a pain-point hook with a reward outcome. Viewers stay longer when the first line promises a simpler system, not just motivation.",
-    variations: [
-      "Rewrite this for creators selling a notion planner with a more direct product-led CTA.",
-      "Create the same reel idea for a student study routine with calmer visuals and late-night desk energy.",
-      "Turn this into a work-from-home reset reel with organizing shots, ambient sounds, and a minimalist script."
-    ]
-  },
-  {
-    id: 6,
-    title: "Neon Product Ad Loop",
-    category: "Video Editing",
-    format: "Motion concept prompt",
-    description:
-      "A punchy looping ad concept for tech, beauty, and accessories brands that want premium motion without a full 3D pipeline.",
-    image: createPreview({
-      title: "Neon Product Ad Loop",
-      badge: "Ad Motion",
-      lineOne: "Neon",
-      lineTwo: "Product Loop",
-      caption: "Reflective surfaces, luxury ad mood, seamless repetition",
-      tool: "Runway + CapCut",
-      start: "#06070b",
-      end: "#411f90",
-      glow: "#8a6dff"
-    }),
-    prompt: `Design a 10-second looping vertical ad concept for a premium product using dark reflective surfaces, neon edge lighting, floating particles, smooth camera orbits, and a final frame that can loop seamlessly back to the first shot. Provide shot descriptions, motion cues, sound design notes, and text overlay suggestions. Keep it premium, futuristic, and suitable for Instagram reels and Pinterest video pins.`,
-    tools: ["Runway", "CapCut", "After Effects"],
-    tips:
-      "Ask for one hero motion and one texture motion per shot. That gives your edit depth without overcomplicating the final render pipeline.",
-    variations: [
-      "Create the same loop for a perfume bottle with smoky light beams and luxurious gold reflections.",
-      "Rewrite this as a gaming headset ad with sharper motion, RGB glow, and punchier impact cuts.",
-      "Build a skincare version with water droplets, floating glass surfaces, and soft aqua lighting."
-    ]
-  },
-  {
-    id: 7,
-    title: "Pinterest Room Makeover",
-    category: "Image Generation",
-    format: "Interior makeover prompt",
-    description:
-      "A home decor concept prompt for highly shareable before-and-after style content and pin-friendly visual inspiration.",
-    image: createPreview({
-      title: "Pinterest Room Makeover",
-      badge: "Decor Prompt",
-      lineOne: "Room",
-      lineTwo: "Makeover",
-      caption: "Warm editorial interiors with pin-worthy styling details",
-      tool: "Midjourney + ChatGPT",
-      start: "#120d0a",
-      end: "#7c5035",
-      glow: "#ffba7a"
-    }),
-    prompt: `Editorial interior design visualization of a small bedroom makeover for a Pinterest-worthy creator apartment, warm neutral palette, sculptural lighting, textured bedding, natural wood details, layered decor, sunlight pouring through linen curtains, realistic styling, elevated but achievable aesthetic, crisp shadows, shot like a premium interiors magazine spread --ar 4:5 --stylize 175`,
-    tools: ["Midjourney", "ChatGPT"],
-    tips:
-      "Include a precise room type and target aesthetic such as Japandi, quiet luxury, or eclectic modern to steer the composition more reliably.",
-    variations: [
-      "Small studio apartment office nook makeover, matte black accents, cozy lamp glow, Pinterest editorial realism --ar 4:5",
-      "Teen bedroom makeover with creamy neutrals, curved mirror, soft morning light, elevated creator aesthetic --ar 4:5",
-      "Living room refresh with olive tones, oversized art, organic shapes, realistic decor styling, magazine-ready framing --ar 4:5"
-    ]
-  },
-  {
-    id: 8,
-    title: "Storytelling Launch Reel",
-    category: "Instagram Reels",
-    format: "Launch script framework",
-    description:
-      "A narrative reel formula for product drops, course launches, and creator offers that need emotional momentum before the CTA.",
-    image: createPreview({
-      title: "Storytelling Launch Reel",
-      badge: "Launch Flow",
-      lineOne: "Storytelling",
-      lineTwo: "Launch Reel",
-      caption: "Narrative hook, emotional build, clean digital product CTA",
-      tool: "ChatGPT + CapCut",
-      start: "#080912",
-      end: "#3a2455",
-      glow: "#d78bff"
-    }),
-    prompt: `Write a 25-second storytelling Instagram reel script for launching a digital product. The tone should feel honest, cinematic, and creator-led. Start with the frustration or turning point, build toward the breakthrough moment, then reveal the product as the system that helped. Include on-screen text, voiceover script, B-roll moments, and one elegant CTA that feels inviting rather than pushy.`,
-    tools: ["ChatGPT", "CapCut", "Instagram"],
-    tips:
-      "The strongest launch reels zoom in on one specific turning point instead of summarizing your whole journey. Ask for emotional pacing, not just copywriting.",
-    variations: [
-      "Rewrite this for a prompt bundle launch with a sharper social-proof angle and a faster opening hook.",
-      "Turn this into a calm founder-story reel for a template shop with minimalist visuals and slower pacing.",
-      "Create a punchier creator-economy version for a YouTube audience with stronger contrast between old workflow and new system."
-    ]
-  }
+
 ];
 
 window.prompts = prompts;
