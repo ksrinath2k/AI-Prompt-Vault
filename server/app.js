@@ -1245,6 +1245,18 @@ function renderAdminPage() {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex,nofollow" />
+    <script>
+      (function () {
+        try {
+          var preference = localStorage.getItem("vault-theme-preference");
+          if (preference === "light" || preference === "dark") {
+            document.documentElement.setAttribute("data-theme", preference);
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+          }
+        } catch (error) {}
+      })();
+    </script>
     <title>AI Prompt Vault Admin</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1262,9 +1274,24 @@ function renderAdminPage() {
           <span class="brand-mark__orb"></span>
           <span>AI Prompt Vault</span>
         </a>
-        <div class="topbar-actions">
+        <button
+          class="menu-toggle ghost-button"
+          type="button"
+          aria-expanded="false"
+          aria-controls="siteMenu"
+          aria-label="Open navigation menu"
+          data-menu-toggle
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="topbar-actions" id="siteMenu">
           <span class="topbar-badge">Private admin console</span>
           <a class="ghost-link" href="/index.html">View public library</a>
+          <button class="ghost-button theme-toggle" type="button" data-theme-toggle>
+            Theme: System
+          </button>
         </div>
       </header>
 

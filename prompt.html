@@ -7,6 +7,18 @@
       name="description"
       content="View, copy, and remix a viral AI prompt with tools, tips, and variations."
     />
+    <script>
+      (function () {
+        try {
+          var preference = localStorage.getItem("vault-theme-preference");
+          if (preference === "light" || preference === "dark") {
+            document.documentElement.setAttribute("data-theme", preference);
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+          }
+        } catch (error) {}
+      })();
+    </script>
     <title>Prompt Details | AI Prompt Vault</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -34,10 +46,25 @@
           <span class="brand-mark__orb"></span>
           <span>AI Prompt Vault</span>
         </a>
-        <div class="topbar-actions">
+        <button
+          class="menu-toggle ghost-button"
+          type="button"
+          aria-expanded="false"
+          aria-controls="siteMenu"
+          aria-label="Open navigation menu"
+          data-menu-toggle
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="topbar-actions" id="siteMenu">
           <span class="topbar-badge">Premium creator workflow</span>
           <a class="ghost-link" href="downloader.html">Reel Downloader</a>
           <a class="ghost-link" href="index.html">Back to Library</a>
+          <button class="ghost-button theme-toggle" type="button" data-theme-toggle>
+            Theme: System
+          </button>
         </div>
       </header>
 

@@ -7,6 +7,18 @@
       name="description"
       content="Download Instagram reels plus YouTube videos and Shorts with preview, mobile-friendly actions, and Netlify-ready API routes."
     />
+    <script>
+      (function () {
+        try {
+          var preference = localStorage.getItem("vault-theme-preference");
+          if (preference === "light" || preference === "dark") {
+            document.documentElement.setAttribute("data-theme", preference);
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+          }
+        } catch (error) {}
+      })();
+    </script>
     <title>Instagram & YouTube Downloader | AI Prompt Vault</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -33,9 +45,24 @@
           <span class="brand-mark__orb"></span>
           <span>AI Prompt Vault</span>
         </a>
-        <div class="topbar-actions">
+        <button
+          class="menu-toggle ghost-button"
+          type="button"
+          aria-expanded="false"
+          aria-controls="siteMenu"
+          aria-label="Open navigation menu"
+          data-menu-toggle
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="topbar-actions" id="siteMenu">
           <span class="topbar-badge">Utility for reel-ready workflows</span>
           <a class="ghost-link" href="index.html">Prompt Library</a>
+          <button class="ghost-button theme-toggle" type="button" data-theme-toggle>
+            Theme: System
+          </button>
         </div>
       </header>
 
