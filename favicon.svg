@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AI Prompt Vault">
+  <defs>
+    <linearGradient id="vault-glow" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#d8e6ff" />
+      <stop offset="45%" stop-color="#89b1ff" />
+      <stop offset="100%" stop-color="#4f72ff" />
+    </linearGradient>
+    <radialGradient id="vault-core" cx="32%" cy="28%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95" />
+      <stop offset="35%" stop-color="#d7e6ff" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#88a8ff" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="#0b1020" />
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#vault-glow)" opacity="0.14" />
+  <circle cx="32" cy="32" r="17" fill="url(#vault-glow)" />
+  <circle cx="27" cy="24" r="9" fill="url(#vault-core)" />
+  <path
+    d="M34 18.5c6.35 0 11.5 5.15 11.5 11.5S40.35 41.5 34 41.5 22.5 36.35 22.5 30c0-1.78.41-3.47 1.12-4.98 1.08 4.61 5.2 8.04 10.38 8.04 6.01 0 10.88-4.62 11.34-10.51A11.44 11.44 0 0 0 34 18.5Z"
+    fill="#0b1020"
+    opacity="0.28"
+  />
+</svg>

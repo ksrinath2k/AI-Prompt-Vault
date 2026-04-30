@@ -1298,9 +1298,21 @@ button {
 .prompt-card__footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.8rem;
   margin-top: 1.1rem;
+}
+
+.prompt-card__footer--compact {
+  justify-content: flex-end;
+}
+
+.prompt-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.8rem;
+  width: 100%;
 }
 
 .detail-shell {

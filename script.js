@@ -800,10 +800,30 @@
 
     const footer = document.createElement("div");
     footer.className = "prompt-card__footer";
+    if (compact) {
+      footer.classList.add("prompt-card__footer--compact");
+    }
 
-    const format = document.createElement("span");
-    format.className = "tool-note";
-    format.textContent = `${prompt.variations.length} variations`;
+    const actions = document.createElement("div");
+    actions.className = "prompt-card__actions";
+
+    if (!compact) {
+      const copyButton = document.createElement("button");
+      copyButton.type = "button";
+      copyButton.className = "ghost-button utility-button";
+      copyButton.textContent = "Copy Prompt";
+      copyButton.addEventListener("click", async () => {
+        const copied = await copyText(prompt.prompt);
+        if (copied) {
+          setCopiedState(copyButton, "Copied");
+          analytics.track("prompt_card_copied", { id: prompt.id, title: prompt.title });
+          showToast("Prompt copied to clipboard");
+        } else {
+          showToast("Copy failed on this browser");
+        }
+      });
+      actions.appendChild(copyButton);
+    }
 
     const link = document.createElement("a");
     link.className = compact ? "ghost-button" : "button button--secondary";
@@ -812,10 +832,11 @@
     link.addEventListener("click", () => {
       analytics.track("prompt_card_clicked", { id: prompt.id, title: prompt.title });
     });
+    actions.appendChild(link);
 
     topRow.appendChild(formatPill);
     body.append(topRow, title, meta, toolList);
-    footer.append(format, link);
+    footer.append(actions);
     body.appendChild(footer);
 
     article.append(media, body);
