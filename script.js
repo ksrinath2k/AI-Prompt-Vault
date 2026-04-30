@@ -871,6 +871,7 @@
     previewFigure.appendChild(previewGlow);
     previewCard.appendChild(previewFigure);
 
+    /*
     const insightCard = document.createElement("section");
     insightCard.className = "detail-card insight-card";
 
@@ -943,8 +944,9 @@
 
     premiumRow.append(premiumLink, homeLink);
     premiumCard.append(premiumTags, premiumRow);
+    */
 
-    previewColumn.append(previewCard, insightCard, tipsCard, premiumCard);
+    previewColumn.append(previewCard);
 
     const contentColumn = document.createElement("div");
     contentColumn.className = "detail-column";
@@ -1064,6 +1066,7 @@
     toolsSection.append(toolsHeading, toolsWrap, toolsNote);
     toolsCard.appendChild(toolsSection);
 
+    /*
     const variationCard = document.createElement("section");
     variationCard.className = "detail-card";
 
@@ -1115,8 +1118,9 @@
 
     variationSection.append(variationHeading, variationList);
     variationCard.appendChild(variationSection);
+    */
 
-    contentColumn.append(headerCard, promptCard, toolsCard, variationCard);
+    contentColumn.append(headerCard, promptCard, toolsCard);
 
     shell.append(previewColumn, contentColumn);
     return shell;

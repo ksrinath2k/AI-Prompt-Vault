@@ -117,31 +117,32 @@ Final touches: Slight glow/bloom effect on highlights Subtle vignette around edg
   },
   {
     id: 3,
-    title: "Anime Streetwear Portrait",
+    title: "Spidy Women",
     category: "Image Generation",
     format: "Character art prompt",
     description:
       "A bold portrait prompt for posters, profile graphics, and punchy social carousels with a Gen Z art direction.",
-    image: createPreview({
-      title: "Anime Streetwear Portrait",
+    image: "/Assets/Spidy women.png",
+    // createPreview({
+      title: "Spidy Women",
       badge: "Character Prompt",
-      lineOne: "Anime",
-      lineTwo: "Streetwear",
-      caption: "Glossy anime rendering with fashion-forward urban energy",
+      lineOne: "Spider Women",
+      lineTwo: "Spidy dress",
+      caption: "Dressed in a red and blue Spider-Man bodysuit",
       tool: "Midjourney + Leonardo",
-      start: "#090a11",
-      end: "#5d1d5b",
-      glow: "#ff5fd2"
-    }),
-    prompt: `Stylized anime portrait of a confident streetwear creator standing under futuristic city signage, layered oversized jacket, reflective accessories, moody magenta and cyan rim light, expressive eyes, crisp linework, glossy cel-shading, rain-slick street reflections, bold composition with premium poster energy, high detail, social-media-ready character art --ar 4:5 --stylize 400`,
-    tools: ["Midjourney", "Leonardo AI"],
-    tips:
-      "Add a creator niche to the subject styling like gaming, dance, or tech to make the portrait feel more ownable for a personal brand.",
-    variations: [
-      "Anime portrait inside a subway station with chrome details, cyber fashion styling, cool blue highlights, cinematic poster framing --ar 4:5",
-      "Stylized fashion anime close-up with warm sunset flare, vintage sneakers, editorial magazine cover energy --ar 4:5",
-      "Neo-Tokyo rooftop portrait, oversized varsity jacket, glowing billboards, high-contrast cel shading, trendy creator avatar aesthetic --ar 4:5"
-    ]
+    //   start: "#090a11",
+    //   end: "#5d1d5b",
+    //   glow: "#ff5fd2"
+    // }),
+    prompt: `A realistic high-angle full-body shot of a young women with messy, textured black hair looking up at the camera. She is dressed in a red and blue Spider-Man bodysuit on his upper half, but wearing loose casual grey sweatpants on his lower half, white clean canvas shoes. She has a black backpack on his shoulders and is holding a red Spider-Man mask in his left hand. She is standing indoors on a grey marble tiled floor. The lighting is soft and natural, giving a casual 'Peter Parker after school' vibe.`,
+    tools: ["Chatgpt", "Gemini"],
+    // tips:
+    //   "Add a creator niche to the subject styling like gaming, dance, or tech to make the portrait feel more ownable for a personal brand.",
+    // variations: [
+    //   "Anime portrait inside a subway station with chrome details, cyber fashion styling, cool blue highlights, cinematic poster framing --ar 4:5",
+    //   "Stylized fashion anime close-up with warm sunset flare, vintage sneakers, editorial magazine cover energy --ar 4:5",
+    //   "Neo-Tokyo rooftop portrait, oversized varsity jacket, glowing billboards, high-contrast cel shading, trendy creator avatar aesthetic --ar 4:5"
+    // ]
   },
   {
     id: 4,
@@ -150,18 +151,24 @@ Final touches: Slight glow/bloom effect on highlights Subtle vignette around edg
     format: "Edit plan prompt",
     description:
       "A fast-cut travel edit system designed for retention-heavy reels with beat drops, speed ramps, and scroll-stopping transitions.",
-    image: createPreview({
+    image: "/Assets/Child and current me.png",
+    // createPreview({
       title: "Viral Travel Montage Cut",
       badge: "Edit Blueprint",
       lineOne: "Travel",
       lineTwo: "Montage Cut",
       caption: "Fast pacing, scenic impact, beat-aware transition planning",
       tool: "ChatGPT + CapCut",
-      start: "#081018",
-      end: "#16486f",
-      glow: "#5dcaff"
-    }),
-    prompt: `Create a 20-second travel reel edit blueprint using clips from airports, city streets, coffee shots, scenic drone footage, and one hotel room reveal. Structure it for high retention on Instagram. I need a second-by-second sequence, transition ideas, speed ramp suggestions, text overlay cues, and music moment recommendations. Make the pacing feel cinematic but social-native, with a strong opening 2 seconds and a satisfying final reveal.`,
+    //   start: "#081018",
+    //   end: "#16486f",
+    //   glow: "#5dcaff"
+    // }),
+    prompt: `Using the images I'm going to upload to create a soft, emotional, black and white art. Let the formation be as follows :
+On the left: a child version of me (from a childhood photo) looking with an innocent smile to the right, with
+"2004 written above it.as black and white On the right: A present version of me (from a recent photo) sits with her right hand under her chin and looks at the child with a calm smile, with "2026" written above her.
+As color photo the first uploaded pic purple color saree pic In the middle: a table with a simple, elegant birthday cake with number 21 on top.
+Studio background: plain and soft (studio background) The lighting: Soft, cinematic, warm (even a black-and-white photo).
+Style: Professional, minimal, emotional photography, focusing on feelings and visual communication between the two versions. Make the picture look so real like a real photoshoot. Keep my original features without changing.photo size 4:5.`,
     tools: ["ChatGPT", "CapCut", "Premiere Pro"],
     tips:
       "Paste your exact clip list into the prompt and ask for 3 pacing versions: calm cinematic, high-energy trend cut, and luxury storytelling.",
