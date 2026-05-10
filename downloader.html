@@ -5,26 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Download public Instagram reels, Instagram stories, YouTube Shorts, YouTube videos, and X/Twitter videos with live preview and server-proxied download links."
+      content="Download public Instagram reels, Instagram stories, Facebook videos, YouTube Shorts, YouTube videos, and X/Twitter videos from one global input."
     />
     <meta
       name="keywords"
-      content="insta reels download, Instagram reels downloader, Instagram story downloader, X video downloader, Twitter video downloader, YouTube Shorts downloader"
+      content="insta reels download, Instagram reels downloader, Instagram story downloader, Facebook video downloader, X video downloader, Twitter video downloader, YouTube Shorts downloader"
     />
     <meta name="robots" content="index,follow,max-image-preview:large" />
     <link rel="canonical" href="/downloader" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Instagram Reels, Story & X Video Downloader | AI Prompt Vault" />
+    <meta property="og:title" content="Global Instagram, Facebook, YouTube & X Video Downloader | AI Prompt Vault" />
     <meta
       property="og:description"
-      content="Paste a public Instagram reel, Instagram story, YouTube Shorts, YouTube video, or X/Twitter post URL to preview and download the media."
+      content="Paste a public Instagram, Facebook, YouTube, or X/Twitter URL to preview and download the media."
     />
     <meta property="og:url" content="/downloader" />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Instagram Reels, Story & X Video Downloader" />
+    <meta name="twitter:title" content="Global Instagram, Facebook, YouTube & X Video Downloader" />
     <meta
       name="twitter:description"
-      content="Live public-media downloader for Instagram reels, stories, YouTube Shorts, and X videos."
+      content="Live public-media downloader for Instagram reels, stories, Facebook videos, YouTube Shorts, and X videos."
     />
     <script>
       (function () {
@@ -43,10 +43,10 @@
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
-        "name": "Instagram Reels, Story & X Video Downloader",
+        "name": "Global Instagram, Facebook, YouTube & X Video Downloader",
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Any",
-        "description": "Preview and download public Instagram reels, Instagram stories, YouTube Shorts, YouTube videos, and X/Twitter videos.",
+        "description": "Preview and download public Instagram reels, Instagram stories, Facebook videos, YouTube Shorts, YouTube videos, and X/Twitter videos.",
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -66,7 +66,7 @@
         } catch (error) {}
       })();
     </script>
-    <title>Instagram Reels, Story & X Video Downloader | AI Prompt Vault</title>
+    <title>Global Instagram, Facebook, YouTube & X Video Downloader | AI Prompt Vault</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -116,41 +116,17 @@
 
       <main>
         <section class="downloader-shell panel">
-          <nav class="download-nav" aria-label="Download types">
-            <a class="download-nav__item is-active" href="downloader.html" data-platform-tab="instagram">
-              <span class="download-nav__icon" aria-hidden="true">🎞</span>
-              <span>Reels</span>
-            </a>
-            <a class="download-nav__item" href="downloader.html" data-platform-tab="instagram">
-              <span class="download-nav__icon" aria-hidden="true">◎</span>
-              <span>Stories</span>
-            </a>
-            <a class="download-nav__item" href="downloader.html" data-platform-tab="youtube">
-              <span class="download-nav__icon" aria-hidden="true">▶</span>
-              <span>YouTube</span>
-            </a>
-            <a class="download-nav__item" href="downloader.html" data-platform-tab="youtube">
-              <span class="download-nav__icon" aria-hidden="true">▣</span>
-              <span>Shorts</span>
-            </a>
-            <a class="download-nav__item" href="downloader.html" data-platform-tab="x">
-              <span class="download-nav__icon" aria-hidden="true">𝕏</span>
-              <span>X Videos</span>
-            </a>
-          </nav>
-
           <div class="downloader-hero">
             <div class="downloader-intro">
               <div class="section-heading downloader-heading">
                 <div>
                   <p class="eyebrow">Creator utility</p>
                   <h1 class="downloader-title" id="downloadTitle">
-                    Instagram Reels, Story &amp; X Video Downloader
+                    Global Video Downloader
                   </h1>
                 </div>
                 <p class="section-copy" id="downloadSubtitle">
-                  Paste a public Instagram reel, story, YouTube video, YouTube Shorts, or X video link and get
-                  a real preview plus downloadable file with a phone-first flow.
+                  Paste an Instagram reel, active story profile, Facebook video, YouTube video, Shorts, or X post link.
                 </p>
               </div>
 
@@ -176,7 +152,7 @@
             <section class="downloader-card glass-card download-workspace">
               <form class="download-form" id="downloadForm" novalidate aria-busy="false">
                 <label class="field-label" for="reelUrl" id="downloadLabel">
-                  Instagram reel, story, YouTube, or X link
+                  Paste any supported public media link
                 </label>
                 <div class="input-stack">
                   <input
@@ -184,7 +160,7 @@
                     class="download-input"
                     type="url"
                     inputmode="url"
-                    placeholder="Paste Instagram, YouTube, or X link"
+                    placeholder="Paste Instagram, Facebook, YouTube, or X link"
                     autocomplete="off"
                     aria-describedby="downloadHint downloadError"
                     required
@@ -204,10 +180,10 @@
                 </div>
 
                 <p class="input-hint" id="downloadHint">
-                  Supports public Instagram reel/story links, YouTube watch links, YouTube Shorts links, and X video posts.
+                  Supports Instagram reels, active story/profile links, Facebook videos, YouTube videos/Shorts, and X video posts.
                 </p>
                 <p class="input-error" id="downloadError" hidden role="alert">
-                  Invalid link. Paste a public Instagram reel/story, YouTube video/Shorts, or X video URL.
+                  Invalid link. Paste a public Instagram, Facebook, YouTube, or X video URL.
                 </p>
               </form>
 
@@ -286,6 +262,9 @@
                     <a class="button button--primary" id="videoDownloadLink" href="#" target="_blank" rel="noopener noreferrer">
                       Download Video
                     </a>
+                    <a class="button button--secondary" id="imageDownloadLink" href="#" target="_blank" rel="noopener noreferrer" hidden>
+                      Download Image
+                    </a>
                     <a class="button button--secondary" id="audioDownloadLink" href="#" target="_blank" rel="noopener noreferrer" hidden>
                       Download Audio
                     </a>
@@ -294,6 +273,8 @@
                     </button>
                   </div>
                 </div>
+
+                <div class="story-result-list" id="multiResultList" hidden></div>
               </section>
             </section>
           </div>
@@ -315,7 +296,7 @@
                 <article class="step-card">
                   <span class="step-index">1</span>
                   <h3>Copy the media link</h3>
-                  <p>Open Instagram, YouTube, or X and copy the public reel, story, video, or Shorts URL.</p>
+                  <p>Open Instagram, Facebook, YouTube, or X and copy the public reel, story, video, or Shorts URL.</p>
                 </article>
                 <article class="step-card">
                   <span class="step-index">2</span>
@@ -364,10 +345,10 @@
               <div class="article-copy">
                 <p>
                   This tool is built for quick, no-confusion use. Paste your public Instagram or
-                  YouTube URL or public X video post into the box above and the app resolves a real previewable download file for you.
+                  Facebook or YouTube URL, or public X video post into the box above and the app resolves a real previewable download file for you.
                 </p>
                 <p><strong>Step 1:</strong> Choose the reel, story, YouTube video, Short, or X video that you want to download.</p>
-                <p><strong>Step 2:</strong> Copy the URL or share link from Instagram, YouTube, or X.</p>
+                <p><strong>Step 2:</strong> Copy the URL or share link from Instagram, Facebook, YouTube, or X.</p>
                 <p><strong>Step 3:</strong> Paste the link here and tap <strong>Download</strong>.</p>
                 <p><strong>Step 4:</strong> Save the result directly from your browser.</p>
               </div>

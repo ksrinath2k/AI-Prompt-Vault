@@ -42,3 +42,8 @@
   from = "/x-video-download"
   to = "/downloader.html"
   status = 200
+
+[[redirects]]
+  from = "/facebook-video-download"
+  to = "/downloader.html"
+  status = 200

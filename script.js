@@ -462,40 +462,16 @@
   }
 
   function initDownloaderPage() {
-    const demoLinks = {
-      instagram: "https://www.instagram.com/reel/DBElt2UIuUG/?utm_source=ig_web_copy_link",
-      youtube: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-      x: "https://x.com/NASA/status/1857066422323630088"
-    };
-    const platformCopy = {
-      instagram: {
-        title: "Instagram Reels & Story Downloader",
-        subtitle:
-          "Paste a public Instagram reel, story, post, YouTube video, YouTube Shorts, or X video link and get a real preview plus downloadable file with a phone-first flow.",
-        label: "Instagram reel, story, or video link",
-        placeholder: "Paste Instagram reel or story link",
-        hint:
-          "Supports public Instagram reel, post, story, and share links. Private or expired stories cannot be resolved.",
-        demoLabel: "Try Demo Reel"
-      },
-      youtube: {
-        title: "YouTube Video & Shorts Downloader",
-        subtitle:
-          "Paste a public YouTube watch or Shorts link to preview the video inline and download it with fewer taps.",
-        label: "YouTube video or Shorts link",
-        placeholder: "Paste YouTube video or Shorts link",
-        hint: "Supports public YouTube watch links, Shorts links, and youtu.be share URLs.",
-        demoLabel: "Try Demo Video"
-      },
-      x: {
-        title: "X Video Downloader",
-        subtitle:
-          "Paste a public X or Twitter post URL and the app resolves the best available MP4 variant for preview and download.",
-        label: "X or Twitter video link",
-        placeholder: "Paste X/Twitter post URL",
-        hint: "Supports public x.com and twitter.com status links that include a downloadable video.",
-        demoLabel: "Try Demo X Link"
-      }
+    const demoLink = "https://www.instagram.com/reel/DBElt2UIuUG/?utm_source=ig_web_copy_link";
+    const globalCopy = {
+      title: "Global Video Downloader",
+      subtitle:
+        "Paste an Instagram reel, active story profile, Facebook video, YouTube video, Shorts, or X post link.",
+      label: "Paste any supported public media link",
+      placeholder: "Paste Instagram, Facebook, YouTube, or X link",
+      hint:
+        "Supports Instagram reels, active story/profile links, Facebook videos, YouTube videos/Shorts, and X video posts.",
+      demoLabel: "Try Demo Link"
     };
     const form = document.getElementById("downloadForm");
     const input = document.getElementById("reelUrl");
@@ -523,7 +499,9 @@
     const owner = document.getElementById("resultOwner");
     const canonicalLink = document.getElementById("resultCanonicalLink");
     const videoLink = document.getElementById("videoDownloadLink");
+    const imageLink = document.getElementById("imageDownloadLink");
     const audioLink = document.getElementById("audioDownloadLink");
+    const multiResultList = document.getElementById("multiResultList");
 
     if (
       !form ||
@@ -532,7 +510,6 @@
       !downloadTitle ||
       !downloadSubtitle ||
       !downloadLabel ||
-      !platformTabs.length ||
       !pasteButton ||
       !demoButton ||
       !downloadAgainButton ||
@@ -552,17 +529,15 @@
       !owner ||
       !canonicalLink ||
       !videoLink ||
-      !audioLink
+      !imageLink ||
+      !audioLink ||
+      !multiResultList
     ) {
       return;
     }
 
-    const state = {
-      platform: "instagram"
-    };
-
     resetDownloaderState();
-    applyPlatformCopy(state.platform);
+    applyGlobalCopy();
     refreshMotion(result);
 
     if (window.location.protocol === "file:") {
@@ -574,26 +549,13 @@
     window.addEventListener("pageshow", (event) => {
       if (event.persisted) {
         resetDownloaderState();
-        applyPlatformCopy(state.platform);
+        applyGlobalCopy();
       }
     });
 
     input.addEventListener("input", () => {
       clearDownloaderMessages();
       input.classList.remove("is-invalid");
-    });
-
-    platformTabs.forEach((tab) => {
-      tab.addEventListener("click", (event) => {
-        event.preventDefault();
-        const nextPlatform = platformCopy[tab.dataset.platformTab]
-          ? tab.dataset.platformTab
-          : "instagram";
-        state.platform = nextPlatform;
-        resetDownloaderState();
-        applyPlatformCopy(nextPlatform);
-        input.focus();
-      });
     });
 
     pasteButton.addEventListener("click", async () => {
@@ -616,7 +578,7 @@
     });
 
     demoButton.addEventListener("click", () => {
-      input.value = demoLinks[state.platform];
+      input.value = demoLink;
       clearDownloaderMessages();
       input.classList.remove("is-invalid");
       input.focus();
@@ -625,7 +587,7 @@
 
     downloadAgainButton.addEventListener("click", () => {
       resetDownloaderState();
-      applyPlatformCopy(state.platform);
+      applyGlobalCopy();
       input.focus();
       scrollResultIntoView(form);
     });
@@ -642,11 +604,6 @@
         error.hidden = false;
         showToast("Invalid link");
         return;
-      }
-
-      if (state.platform !== detectedPlatform) {
-        state.platform = detectedPlatform;
-        applyPlatformCopy(detectedPlatform);
       }
 
       setLoadingState(true);
@@ -666,48 +623,9 @@
           throw new Error(payload.error || "Could not fetch media assets.");
         }
 
-        state.platform = payload.platform || detectedPlatform;
-        applyPlatformCopy(state.platform);
+        applyGlobalCopy();
 
-        preview.hidden = !payload.previewPath;
-        previewVideo.hidden = !payload.previewPath;
-        previewVideo.src = payload.previewPath || "";
-        previewVideo.poster = payload.thumbnailPath || "";
-        previewVideo.load();
-
-        thumbnailWrap.hidden = Boolean(payload.previewPath) || !payload.thumbnailPath;
-        thumbnail.src = payload.thumbnailPath || "";
-
-        title.textContent = payload.title || "Download assets";
-        source.textContent = payload.source || "Direct resolver";
-        meta.textContent =
-          payload.message ||
-          "Your media links are ready. Use the buttons below to preview or save the file.";
-        owner.textContent = payload.owner || "Public media";
-        canonicalLink.href = payload.canonicalUrl || url;
-        canonicalLink.textContent = payload.canonicalUrl
-          ? shortenUrlLabel(payload.canonicalUrl)
-          : "Open source";
-
-        videoLink.href = payload.videoDownloadPath || "#";
-        if (payload.videoFilename) {
-          videoLink.setAttribute("download", payload.videoFilename);
-        } else {
-          videoLink.removeAttribute("download");
-        }
-
-        if (payload.audioDownloadPath) {
-          audioLink.href = payload.audioDownloadPath;
-          audioLink.setAttribute("download", payload.audioFilename || "media-audio.mp3");
-          audioLink.hidden = false;
-        } else {
-          audioLink.hidden = true;
-          audioLink.removeAttribute("href");
-          audioLink.removeAttribute("download");
-        }
-
-        placeholder.hidden = true;
-        content.hidden = false;
+        renderDownloadPayload(payload, url);
 
         analytics.track("media_download_requested", {
           url,
@@ -715,7 +633,13 @@
           resolvedUrl: payload.canonicalUrl || url,
           hasAudio: Boolean(payload.audioDownloadPath)
         });
-        showToast("Media assets ready");
+        const items = Array.isArray(payload.items) ? payload.items : [];
+        if (items.length === 1 && payload.autoDownloadPath) {
+          triggerImmediateDownload(payload.autoDownloadPath, items[0]);
+          showToast("Download started");
+        } else {
+          showToast(items.length > 1 ? "Stories ready" : "Media assets ready");
+        }
         scrollResultIntoView(result);
         refreshMotion(result);
       } catch (requestError) {
@@ -732,21 +656,159 @@
       status.textContent = "";
     }
 
-    function applyPlatformCopy(platform) {
-      const copy = platformCopy[platform] || platformCopy.instagram;
-
-      downloadTitle.textContent = copy.title;
-      downloadSubtitle.textContent = copy.subtitle;
-      downloadLabel.textContent = copy.label;
-      input.placeholder = copy.placeholder;
-      document.getElementById("downloadHint").textContent = copy.hint;
-      demoButton.textContent = copy.demoLabel;
+    function applyGlobalCopy() {
+      downloadTitle.textContent = globalCopy.title;
+      downloadSubtitle.textContent = globalCopy.subtitle;
+      downloadLabel.textContent = globalCopy.label;
+      input.placeholder = globalCopy.placeholder;
+      document.getElementById("downloadHint").textContent = globalCopy.hint;
+      demoButton.textContent = globalCopy.demoLabel;
 
       platformTabs.forEach((tab) => {
-        const isActive = tab.dataset.platformTab === platform;
-        tab.classList.toggle("is-active", isActive);
-        tab.setAttribute("aria-current", isActive ? "page" : "false");
+        tab.classList.remove("is-active");
+        tab.setAttribute("aria-current", "false");
       });
+    }
+
+    function renderDownloadPayload(payload, originalUrl) {
+      const items = Array.isArray(payload.items) ? payload.items.filter(Boolean) : [];
+      const primaryItem = items[0] || payload;
+      const isCollection = items.length > 1;
+      const hasVideoPreview = Boolean(primaryItem.videoDownloadPath && primaryItem.previewPath);
+      const hasImagePreview = Boolean(primaryItem.imageDownloadPath || primaryItem.thumbnailPath);
+
+      preview.hidden = isCollection || !hasVideoPreview;
+      previewVideo.hidden = isCollection || !hasVideoPreview;
+      previewVideo.src = !isCollection && hasVideoPreview ? primaryItem.previewPath : "";
+      previewVideo.poster = !isCollection && primaryItem.thumbnailPath ? primaryItem.thumbnailPath : "";
+      previewVideo.load();
+
+      thumbnailWrap.hidden = isCollection || hasVideoPreview || !hasImagePreview;
+      thumbnail.src = !isCollection && hasImagePreview
+        ? primaryItem.thumbnailPath || primaryItem.previewPath || ""
+        : "";
+
+      title.textContent = payload.title || primaryItem.title || "Download assets";
+      source.textContent = payload.source || primaryItem.source || "Direct resolver";
+      meta.textContent =
+        payload.message ||
+        primaryItem.message ||
+        "Your media links are ready. Use the buttons below to save the file.";
+      owner.textContent = payload.owner || primaryItem.owner || "Public media";
+      canonicalLink.href = payload.canonicalUrl || originalUrl;
+      canonicalLink.textContent = payload.canonicalUrl
+        ? shortenUrlLabel(payload.canonicalUrl)
+        : "Open source";
+
+      setMediaLink(videoLink, primaryItem.videoDownloadPath, primaryItem.videoFilename, "Download Video");
+      setMediaLink(imageLink, primaryItem.imageDownloadPath, primaryItem.imageFilename, "Download Image");
+      setMediaLink(audioLink, primaryItem.audioDownloadPath, primaryItem.audioFilename, "Download Audio");
+
+      placeholder.hidden = true;
+      content.hidden = false;
+      renderMultiResults(items);
+    }
+
+    function renderMultiResults(items) {
+      multiResultList.replaceChildren();
+      multiResultList.hidden = items.length <= 1;
+
+      if (items.length <= 1) {
+        return;
+      }
+
+      items.forEach((item, index) => {
+        const card = document.createElement("article");
+        card.className = "story-result-card";
+
+        const media = document.createElement("div");
+        media.className = "story-result-card__media";
+
+        if (item.videoDownloadPath && item.previewPath) {
+          const video = document.createElement("video");
+          video.controls = true;
+          video.playsInline = true;
+          video.preload = "metadata";
+          video.src = item.previewPath;
+          if (item.thumbnailPath) {
+            video.poster = item.thumbnailPath;
+          }
+          media.appendChild(video);
+        } else if (item.thumbnailPath || item.previewPath) {
+          const image = document.createElement("img");
+          image.src = item.thumbnailPath || item.previewPath;
+          image.alt = `${item.title || "Story"} preview`;
+          media.appendChild(image);
+        }
+
+        const body = document.createElement("div");
+        body.className = "story-result-card__body";
+
+        const heading = document.createElement("strong");
+        heading.textContent = item.title || `Story ${index + 1}`;
+
+        const details = document.createElement("p");
+        details.textContent = item.owner ? `@${item.owner}` : "Ready to download";
+
+        const actions = document.createElement("div");
+        actions.className = "story-result-card__actions";
+
+        if (item.videoDownloadPath) {
+          actions.appendChild(createDownloadAnchor(item.videoDownloadPath, item.videoFilename, "Download Video"));
+        }
+
+        if (item.imageDownloadPath) {
+          actions.appendChild(createDownloadAnchor(item.imageDownloadPath, item.imageFilename, "Download Image"));
+        }
+
+        body.append(heading, details, actions);
+        card.append(media, body);
+        multiResultList.appendChild(card);
+      });
+    }
+
+    function setMediaLink(link, href, filename, label) {
+      link.textContent = label;
+      if (href) {
+        link.href = href;
+        link.hidden = false;
+        if (filename) {
+          link.setAttribute("download", filename);
+        } else {
+          link.removeAttribute("download");
+        }
+      } else {
+        link.hidden = true;
+        link.removeAttribute("href");
+        link.removeAttribute("download");
+      }
+    }
+
+    function createDownloadAnchor(href, filename, label) {
+      const link = document.createElement("a");
+      link.className = "button button--primary";
+      link.href = href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = label;
+      if (filename) {
+        link.setAttribute("download", filename);
+      }
+      return link;
+    }
+
+    function triggerImmediateDownload(href, item) {
+      const link = document.createElement("a");
+      link.href = href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      const filename = item.videoFilename || item.imageFilename || item.audioFilename;
+      if (filename) {
+        link.setAttribute("download", filename);
+      }
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     }
 
     function resetDownloaderState() {
@@ -772,9 +834,14 @@
       canonicalLink.textContent = "Open source";
       videoLink.href = "#";
       videoLink.removeAttribute("download");
+      imageLink.hidden = true;
+      imageLink.removeAttribute("href");
+      imageLink.removeAttribute("download");
       audioLink.hidden = true;
       audioLink.removeAttribute("href");
       audioLink.removeAttribute("download");
+      multiResultList.replaceChildren();
+      multiResultList.hidden = true;
       setLoadingState(false);
     }
 
@@ -807,7 +874,8 @@
           path.startsWith("/share/") ||
           path.startsWith("/share/reel/") ||
           path.startsWith("/share/p/") ||
-          path.startsWith("/p/"))
+          path.startsWith("/p/") ||
+          isInstagramProfilePath(path))
       ) {
         return "instagram";
       }
@@ -843,10 +911,49 @@
         }
       }
 
+      if (
+        host === "facebook.com" ||
+        host.endsWith(".facebook.com") ||
+        host === "fb.watch"
+      ) {
+        if (
+          path.startsWith("/watch") ||
+          path.includes("/videos/") ||
+          path.startsWith("/reel/") ||
+          path.length > 1
+        ) {
+          return "facebook";
+        }
+      }
+
       return null;
     } catch (error) {
       return null;
     }
+  }
+
+  function isInstagramProfilePath(path) {
+    const parts = String(path || "").split("/").filter(Boolean);
+
+    if (parts.length !== 1) {
+      return false;
+    }
+
+    return !new Set([
+      "about",
+      "accounts",
+      "api",
+      "developer",
+      "directory",
+      "explore",
+      "legal",
+      "oauth",
+      "p",
+      "privacy",
+      "reel",
+      "reels",
+      "stories"
+    ]).has(parts[0]);
   }
 
   async function parseJsonSafely(response) {

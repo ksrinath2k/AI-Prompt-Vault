@@ -25,6 +25,11 @@ const youtubeUserAgent =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
 const xUserAgent =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
+const facebookUserAgent =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
+const instagramCookie =
+  process.env.INSTAGRAM_COOKIE ||
+  (process.env.INSTAGRAM_SESSION_ID ? `sessionid=${process.env.INSTAGRAM_SESSION_ID}` : "");
 
 let youtubeClientPromise;
 
@@ -219,29 +224,14 @@ app.post("/api/download", async (req, res) => {
 
   if (!platform) {
     return res.status(400).json({
-      error: "Paste a public Instagram reel/story, YouTube video/Shorts, or X video link."
+      error: "Paste a public Instagram, Facebook, YouTube, or X video link."
     });
   }
 
   try {
     const resolved = await resolveMediaForPlatform(platform, submittedUrl);
-    const baseTokenPayload = {
-      platform: resolved.platform,
-      canonicalUrl: resolved.canonicalUrl,
-      fileBase: resolved.fileBase
-    };
-    const thumbnailToken = resolved.thumbnail
-      ? createMediaToken({ ...baseTokenPayload, thumbnail: resolved.thumbnail })
-      : null;
-    const previewToken = resolved.preview
-      ? createMediaToken({ ...baseTokenPayload, preview: resolved.preview })
-      : null;
-    const videoToken = resolved.video
-      ? createMediaToken({ ...baseTokenPayload, video: resolved.video })
-      : null;
-    const audioToken = resolved.audio
-      ? createMediaToken({ ...baseTokenPayload, audio: resolved.audio })
-      : null;
+    const items = createDownloadItems(resolved);
+    const primaryItem = items[0] || {};
 
     return res.json({
       platform: resolved.platform,
@@ -251,12 +241,16 @@ app.post("/api/download", async (req, res) => {
       caption: resolved.caption,
       source: resolved.source,
       message: resolved.message,
-      thumbnailPath: thumbnailToken ? `/api/media/thumbnail?token=${encodeURIComponent(thumbnailToken)}` : null,
-      previewPath: previewToken ? `/api/media/preview?token=${encodeURIComponent(previewToken)}` : null,
-      videoDownloadPath: videoToken ? `/api/media/video?token=${encodeURIComponent(videoToken)}` : null,
-      audioDownloadPath: audioToken ? `/api/media/audio?token=${encodeURIComponent(audioToken)}` : null,
-      videoFilename: resolved.video ? `${resolved.fileBase}.mp4` : null,
-      audioFilename: resolved.audio ? `${resolved.fileBase}.mp3` : null
+      thumbnailPath: primaryItem.thumbnailPath || null,
+      previewPath: primaryItem.previewPath || null,
+      videoDownloadPath: primaryItem.videoDownloadPath || null,
+      imageDownloadPath: primaryItem.imageDownloadPath || null,
+      audioDownloadPath: primaryItem.audioDownloadPath || null,
+      videoFilename: primaryItem.videoFilename || null,
+      imageFilename: primaryItem.imageFilename || null,
+      audioFilename: primaryItem.audioFilename || null,
+      autoDownloadPath: items.length === 1 ? primaryItem.downloadPath : null,
+      items
     });
   } catch (error) {
     const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
@@ -264,7 +258,7 @@ app.post("/api/download", async (req, res) => {
     return res.status(statusCode).json({
       error:
         error.publicMessage ||
-        "We could not fetch this media right now. Try another public Instagram, YouTube, or X URL."
+        "We could not fetch this media right now. Try another public Instagram, Facebook, YouTube, or X URL."
     });
   }
 });
@@ -337,6 +331,10 @@ async function resolveMediaForPlatform(platform, submittedUrl) {
     return resolveXMedia(submittedUrl);
   }
 
+  if (platform === "facebook") {
+    return resolveFacebookMedia(submittedUrl);
+  }
+
   throw createPublicError("That platform is not supported yet.", 400);
 }
 
@@ -347,11 +345,144 @@ async function resolveInstagramMedia(rawUrl) {
     throw createPublicError("This Instagram link type is not supported yet.", 400);
   }
 
+  const storyUsername = extractInstagramStoryUsername(canonicalUrl);
+  if (storyUsername) {
+    return resolveInstagramStoriesForProfile(canonicalUrl, storyUsername);
+  }
+
   try {
     return await resolveInstagramWithPackage(canonicalUrl);
   } catch (packageError) {
     return resolveInstagramWithPageMetadata(canonicalUrl, packageError);
   }
+}
+
+async function resolveInstagramStoriesForProfile(canonicalUrl, username) {
+  const profile = await fetchInstagramProfile(username);
+  const userId = profile?.data?.user?.id || profile?.user?.id;
+
+  if (!userId) {
+    throw createPublicError("That Instagram profile could not be loaded.", 404);
+  }
+
+  const storyResponse = await fetch(
+    `https://i.instagram.com/api/v1/feed/reels_media/?reel_ids=${encodeURIComponent(userId)}`,
+    {
+      headers: createInstagramApiHeaders()
+    }
+  );
+
+  if (!storyResponse.ok) {
+    throw createPublicError(
+      instagramCookie
+        ? "Instagram did not return active stories for that public profile."
+        : "Active Instagram story lists require an Instagram session cookie on the server. Add INSTAGRAM_COOKIE or INSTAGRAM_SESSION_ID in Netlify, then retry.",
+      storyResponse.status === 404 ? 404 : 502
+    );
+  }
+
+  const payload = await storyResponse.json();
+  const reel = Array.isArray(payload.reels_media) ? payload.reels_media[0] : null;
+  const storyItems = Array.isArray(reel?.items) ? reel.items : [];
+  const items = storyItems.map((story, index) =>
+    createInstagramStoryDownloadItem({
+      canonicalUrl,
+      username,
+      story,
+      index
+    })
+  ).filter((item) => item.video || item.image);
+
+  if (items.length === 0) {
+    throw createPublicError("No active downloadable stories were found for that profile.", 404);
+  }
+
+  return {
+    platform: "instagram",
+    canonicalUrl,
+    title: `${username} active stories`,
+    owner: username,
+    caption: "",
+    thumbnail: items[0]?.thumbnail || null,
+    preview: items[0]?.preview || null,
+    video: items[0]?.video || null,
+    image: items[0]?.image || null,
+    audio: null,
+    source: "Resolved from Instagram active stories",
+    message: `${items.length} active ${items.length === 1 ? "story is" : "stories are"} ready. Use the separate buttons below.`,
+    fileBase: createFileBase("instagram", canonicalUrl, username),
+    items
+  };
+}
+
+async function fetchInstagramProfile(username) {
+  const response = await fetch(
+    `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`,
+    {
+      headers: createInstagramApiHeaders()
+    }
+  );
+
+  if (!response.ok) {
+    throw createPublicError("That Instagram profile could not be loaded.", 404);
+  }
+
+  return response.json();
+}
+
+function createInstagramApiHeaders() {
+  return {
+    "User-Agent": instagramUserAgent,
+    Accept: "application/json,text/plain,*/*",
+    "X-IG-App-ID": "936619743392459",
+    "X-ASBD-ID": "129477",
+    "X-Requested-With": "XMLHttpRequest",
+    Referer: "https://www.instagram.com/",
+    ...(instagramCookie ? { Cookie: instagramCookie } : {})
+  };
+}
+
+function createInstagramStoryDownloadItem(config) {
+  const video = pickInstagramStoryVideo(config.story);
+  const image = pickInstagramStoryImage(config.story);
+  const storyId = config.story?.id || config.story?.pk || `story-${config.index + 1}`;
+  const fileBase = createFileBase(
+    "instagram",
+    `https://www.instagram.com/stories/${config.username}/${storyId}/`,
+    config.username
+  );
+
+  return {
+    platform: "instagram",
+    canonicalUrl: config.canonicalUrl,
+    title: `Story ${config.index + 1}`,
+    owner: config.username,
+    caption: "",
+    thumbnail: image || null,
+    preview: video || image || null,
+    video: video || null,
+    image: video ? null : image || null,
+    audio: null,
+    source: "Resolved from Instagram active stories",
+    message: "Story ready to download.",
+    fileBase
+  };
+}
+
+function pickInstagramStoryVideo(story) {
+  const versions = Array.isArray(story?.video_versions) ? story.video_versions : [];
+  return versions
+    .slice()
+    .sort((left, right) => (Number(right.width) || 0) - (Number(left.width) || 0))[0]?.url || null;
+}
+
+function pickInstagramStoryImage(story) {
+  const candidates = Array.isArray(story?.image_versions2?.candidates)
+    ? story.image_versions2.candidates
+    : [];
+  return candidates
+    .slice()
+    .sort((left, right) => (Number(right.width) || 0) - (Number(left.width) || 0))[0]?.url || null;
 }
 
 async function resolveXMedia(rawUrl) {
@@ -482,6 +613,77 @@ async function resolveXWithPageMetadata(canonicalUrl, tweetId, originalError) {
       : "Your X video is ready to preview and download.",
     fileBase: createFileBase("x", canonicalUrl, owner || tweetId)
   };
+}
+
+async function resolveFacebookMedia(rawUrl) {
+  const canonicalUrl = await resolveFacebookUrl(rawUrl);
+  const response = await fetch(canonicalUrl, {
+    headers: {
+      "User-Agent": facebookUserAgent,
+      Accept: "text/html,application/xhtml+xml"
+    }
+  });
+
+  if (!response.ok) {
+    throw createPublicError("Facebook could not be reached for this video.", 502);
+  }
+
+  const html = await response.text();
+  const video =
+    readMetaTag(html, "og:video") ||
+    readMetaTag(html, "og:video:url") ||
+    readJsonValue(html, "browser_native_hd_url") ||
+    readJsonValue(html, "browser_native_sd_url") ||
+    readJsonValue(html, "playable_url_quality_hd") ||
+    readJsonValue(html, "playable_url");
+
+  if (!video) {
+    throw createPublicError(
+      "This Facebook video could not be resolved. It may be private, removed, or restricted.",
+      404
+    );
+  }
+
+  const thumbnail =
+    readMetaTag(html, "og:image") ||
+    readJsonValue(html, "preferred_thumbnail") ||
+    readJsonValue(html, "thumbnailImage");
+  const title = readMetaTag(html, "og:title") || "Facebook Video";
+  const caption = readMetaTag(html, "og:description") || "";
+  const owner = extractOwnerFromText(title, caption) || "facebook";
+
+  return {
+    platform: "facebook",
+    canonicalUrl,
+    title,
+    owner,
+    caption,
+    thumbnail,
+    preview: video,
+    video,
+    audio: null,
+    source: "Resolved from Facebook public page metadata",
+    message: "Your Facebook video is ready to download.",
+    fileBase: createFileBase("facebook", canonicalUrl, owner)
+  };
+}
+
+async function resolveFacebookUrl(rawUrl) {
+  const parsed = new URL(rawUrl);
+
+  if (!parsed.hostname.replace(/^www\./, "").toLowerCase().startsWith("fb.watch")) {
+    return parsed.toString();
+  }
+
+  const response = await fetch(parsed.toString(), {
+    redirect: "follow",
+    headers: {
+      "User-Agent": facebookUserAgent,
+      Accept: "text/html,application/xhtml+xml"
+    }
+  });
+
+  return response.url || parsed.toString();
 }
 
 async function resolveInstagramUrl(rawUrl) {
@@ -686,6 +888,10 @@ function getSessionMediaTarget(session, kind) {
     return session.audio;
   }
 
+  if (kind === "image") {
+    return session.image;
+  }
+
   if (kind === "thumbnail") {
     return session.thumbnail;
   }
@@ -701,6 +907,63 @@ function getSessionMediaTarget(session, kind) {
   return null;
 }
 
+function createDownloadItems(resolved) {
+  const sourceItems = Array.isArray(resolved.items) && resolved.items.length > 0
+    ? resolved.items
+    : [resolved];
+
+  return sourceItems.map((item, index) => createDownloadItem(item, index));
+}
+
+function createDownloadItem(item, index) {
+  const fileBase = item.fileBase || createFileBase(item.platform, item.canonicalUrl, item.owner);
+  const baseTokenPayload = {
+    platform: item.platform,
+    canonicalUrl: item.canonicalUrl,
+    fileBase
+  };
+  const thumbnailToken = item.thumbnail
+    ? createMediaToken({ ...baseTokenPayload, thumbnail: item.thumbnail })
+    : null;
+  const previewToken = item.preview
+    ? createMediaToken({ ...baseTokenPayload, preview: item.preview })
+    : null;
+  const videoToken = item.video
+    ? createMediaToken({ ...baseTokenPayload, video: item.video })
+    : null;
+  const imageToken = item.image
+    ? createMediaToken({ ...baseTokenPayload, image: item.image })
+    : null;
+  const audioToken = item.audio
+    ? createMediaToken({ ...baseTokenPayload, audio: item.audio })
+    : null;
+  const downloadPath = videoToken
+    ? `/api/media/video?token=${encodeURIComponent(videoToken)}`
+    : imageToken
+      ? `/api/media/image?token=${encodeURIComponent(imageToken)}`
+      : audioToken
+        ? `/api/media/audio?token=${encodeURIComponent(audioToken)}`
+        : null;
+
+  return {
+    platform: item.platform,
+    canonicalUrl: item.canonicalUrl,
+    title: item.title || `Media ${index + 1}`,
+    owner: item.owner || "",
+    source: item.source || "Direct resolver",
+    message: item.message || "",
+    thumbnailPath: thumbnailToken ? `/api/media/thumbnail?token=${encodeURIComponent(thumbnailToken)}` : null,
+    previewPath: previewToken ? `/api/media/preview?token=${encodeURIComponent(previewToken)}` : null,
+    videoDownloadPath: videoToken ? `/api/media/video?token=${encodeURIComponent(videoToken)}` : null,
+    imageDownloadPath: imageToken ? `/api/media/image?token=${encodeURIComponent(imageToken)}` : null,
+    audioDownloadPath: audioToken ? `/api/media/audio?token=${encodeURIComponent(audioToken)}` : null,
+    downloadPath,
+    videoFilename: videoToken ? `${fileBase}.mp4` : null,
+    imageFilename: imageToken ? `${fileBase}.jpg` : null,
+    audioFilename: audioToken ? `${fileBase}.mp3` : null
+  };
+}
+
 function createMediaToken(payload) {
   const body = Buffer.from(
     JSON.stringify({
@@ -710,6 +973,7 @@ function createMediaToken(payload) {
       thumbnail: payload.thumbnail || null,
       preview: payload.preview || null,
       video: payload.video || null,
+      image: payload.image || null,
       audio: payload.audio || null,
       exp: Date.now() + mediaTokenTtlMs
     })
@@ -719,7 +983,7 @@ function createMediaToken(payload) {
 }
 
 function hasTokenMediaTargets(payload) {
-  return Boolean(payload?.thumbnail || payload?.preview || payload?.video || payload?.audio);
+  return Boolean(payload?.thumbnail || payload?.preview || payload?.video || payload?.image || payload?.audio);
 }
 
 async function reloadMediaFromToken(tokenPayload, res) {
@@ -732,7 +996,7 @@ async function reloadMediaFromToken(tokenPayload, res) {
 }
 
 function shouldRedirectResolvedMedia(platform) {
-  return platform === "instagram" || platform === "x";
+  return platform === "instagram" || platform === "facebook" || platform === "x";
 }
 
 function redirectToResolvedMedia(res, targetUrl) {
@@ -834,6 +1098,14 @@ function createUpstreamHeaders(platform) {
     };
   }
 
+  if (platform === "facebook") {
+    return {
+      "User-Agent": facebookUserAgent,
+      Accept: "video/mp4,video/*,image/*,*/*",
+      Referer: "https://www.facebook.com/"
+    };
+  }
+
   return {};
 }
 
@@ -847,6 +1119,10 @@ function copyHeaderIfPresent(upstream, res, headerName) {
 function getDefaultContentType(kind) {
   if (kind === "audio") {
     return "audio/mpeg";
+  }
+
+  if (kind === "image") {
+    return "image/jpeg";
   }
 
   if (kind === "thumbnail") {
@@ -875,7 +1151,8 @@ function detectSupportedPlatform(value) {
         pathName.startsWith("/share/") ||
         pathName.startsWith("/share/reel/") ||
         pathName.startsWith("/share/p/") ||
-        pathName.startsWith("/p/"))
+        pathName.startsWith("/p/") ||
+        isInstagramProfilePath(pathName))
     ) {
       return "instagram";
     }
@@ -904,11 +1181,79 @@ function detectSupportedPlatform(value) {
         return "x";
       }
     }
+
+    if (
+      host === "facebook.com" ||
+      host.endsWith(".facebook.com") ||
+      host === "fb.watch"
+    ) {
+      if (
+        pathName.startsWith("/watch") ||
+        pathName.includes("/videos/") ||
+        pathName.startsWith("/reel/") ||
+        pathName.length > 1
+      ) {
+        return "facebook";
+      }
+    }
   } catch (error) {
     return null;
   }
 
   return null;
+}
+
+function isInstagramProfilePath(pathName) {
+  const pathParts = String(pathName || "").split("/").filter(Boolean);
+
+  if (pathParts.length !== 1) {
+    return false;
+  }
+
+  return !new Set([
+    "about",
+    "accounts",
+    "api",
+    "developer",
+    "directory",
+    "explore",
+    "legal",
+    "oauth",
+    "p",
+    "privacy",
+    "reel",
+    "reels",
+    "stories"
+  ]).has(pathParts[0]);
+}
+
+function extractInstagramStoryUsername(value) {
+  try {
+    const url = new URL(value.trim());
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+    const pathParts = url.pathname.split("/").filter(Boolean);
+
+    if (host !== "instagram.com" && !host.endsWith(".instagram.com")) {
+      return "";
+    }
+
+    if (pathParts[0]?.toLowerCase() === "stories" && pathParts[1]) {
+      return sanitizeInstagramUsername(pathParts[1]);
+    }
+
+    if (pathParts.length === 1 && isInstagramProfilePath(url.pathname.toLowerCase())) {
+      return sanitizeInstagramUsername(pathParts[0]);
+    }
+  } catch (error) {
+    return "";
+  }
+
+  return "";
+}
+
+function sanitizeInstagramUsername(value) {
+  const username = String(value || "").trim().replace(/^@/, "");
+  return /^[a-zA-Z0-9._]{1,30}$/.test(username) ? username : "";
 }
 
 function extractTweetId(value) {

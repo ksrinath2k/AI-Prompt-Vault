@@ -903,6 +903,7 @@ body.menu-open .menu-toggle span:nth-child(3) {
 .download-workspace {
   display: grid;
   gap: 1rem;
+  order: -1;
 }
 
 .download-form {
@@ -1236,6 +1237,64 @@ body.menu-open .menu-toggle span:nth-child(3) {
 
 .download-links .button {
   width: 100%;
+}
+
+.story-result-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.story-result-card {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 0.9rem;
+  padding: 0.85rem;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.story-result-card__media {
+  overflow: hidden;
+  aspect-ratio: 9 / 16;
+  border-radius: 16px;
+  background: #06070d;
+}
+
+.story-result-card__media video,
+.story-result-card__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-result-card__body {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 0.55rem;
+}
+
+.story-result-card__body strong {
+  font-family: "Space Grotesk", "Avenir Next", sans-serif;
+  font-size: 1.05rem;
+}
+
+.story-result-card__body p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.story-result-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.story-result-card__actions .button {
+  min-height: 2.7rem;
+  padding-inline: 0.95rem;
 }
 
 .steps-grid {
@@ -2005,6 +2064,10 @@ body.menu-open .menu-toggle span:nth-child(3) {
     grid-template-columns: 1fr;
   }
 
+  .story-result-card {
+    grid-template-columns: 78px minmax(0, 1fr);
+  }
+
   .result-preview--video {
     padding: 0.85rem;
   }
@@ -2084,8 +2147,13 @@ body.menu-open .menu-toggle span:nth-child(3) {
   }
 
   .downloader-hero {
-    grid-template-columns: minmax(0, 0.92fr) minmax(340px, 0.88fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
+  }
+
+  .download-workspace {
+    width: min(100%, 880px);
+    margin-inline: auto;
   }
 
   .download-nav {
