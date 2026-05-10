@@ -2,7 +2,7 @@
   "name": "ai-prompt-vault",
   "version": "1.0.0",
   "private": true,
-  "description": "AI Prompt Vault with a local Instagram reel downloader mock API.",
+  "description": "AI Prompt Vault with live Instagram, YouTube, and X video downloader API routes.",
   "main": "server/server.js",
   "scripts": {
     "dev": "node server/server.js",

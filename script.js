@@ -464,17 +464,18 @@
   function initDownloaderPage() {
     const demoLinks = {
       instagram: "https://www.instagram.com/reel/DBElt2UIuUG/?utm_source=ig_web_copy_link",
-      youtube: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      youtube: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      x: "https://x.com/NASA/status/1857066422323630088"
     };
     const platformCopy = {
       instagram: {
-        title: "Instagram Reel & YouTube Downloader",
+        title: "Instagram Reels & Story Downloader",
         subtitle:
-          "Paste a public Instagram reel, YouTube video, or YouTube Shorts link and get a real preview plus downloadable file with a phone-first flow.",
-        label: "Instagram reel or YouTube link",
-        placeholder: "Paste Instagram reel or YouTube link",
+          "Paste a public Instagram reel, story, post, YouTube video, YouTube Shorts, or X video link and get a real preview plus downloadable file with a phone-first flow.",
+        label: "Instagram reel, story, or video link",
+        placeholder: "Paste Instagram reel or story link",
         hint:
-          "Supports public Instagram reel links, YouTube watch links, and YouTube Shorts links.",
+          "Supports public Instagram reel, post, story, and share links. Private or expired stories cannot be resolved.",
         demoLabel: "Try Demo Reel"
       },
       youtube: {
@@ -485,6 +486,15 @@
         placeholder: "Paste YouTube video or Shorts link",
         hint: "Supports public YouTube watch links, Shorts links, and youtu.be share URLs.",
         demoLabel: "Try Demo Video"
+      },
+      x: {
+        title: "X Video Downloader",
+        subtitle:
+          "Paste a public X or Twitter post URL and the app resolves the best available MP4 variant for preview and download.",
+        label: "X or Twitter video link",
+        placeholder: "Paste X/Twitter post URL",
+        hint: "Supports public x.com and twitter.com status links that include a downloadable video.",
+        demoLabel: "Try Demo X Link"
       }
     };
     const form = document.getElementById("downloadForm");
@@ -576,7 +586,9 @@
     platformTabs.forEach((tab) => {
       tab.addEventListener("click", (event) => {
         event.preventDefault();
-        const nextPlatform = tab.dataset.platformTab === "youtube" ? "youtube" : "instagram";
+        const nextPlatform = platformCopy[tab.dataset.platformTab]
+          ? tab.dataset.platformTab
+          : "instagram";
         state.platform = nextPlatform;
         resetDownloaderState();
         applyPlatformCopy(nextPlatform);
@@ -675,7 +687,7 @@
         canonicalLink.href = payload.canonicalUrl || url;
         canonicalLink.textContent = payload.canonicalUrl
           ? shortenUrlLabel(payload.canonicalUrl)
-          : "Open reel";
+          : "Open source";
 
         videoLink.href = payload.videoDownloadPath || "#";
         if (payload.videoFilename) {
@@ -697,7 +709,7 @@
         placeholder.hidden = true;
         content.hidden = false;
 
-        analytics.track("reel_download_requested", {
+        analytics.track("media_download_requested", {
           url,
           platform: payload.platform || detectedPlatform,
           resolvedUrl: payload.canonicalUrl || url,
@@ -757,7 +769,7 @@
         "Your media links are ready. Use the buttons below to preview or save the file.";
       owner.textContent = "Unknown";
       canonicalLink.href = "#";
-      canonicalLink.textContent = "Open reel";
+      canonicalLink.textContent = "Open source";
       videoLink.href = "#";
       videoLink.removeAttribute("download");
       audioLink.hidden = true;
@@ -790,6 +802,9 @@
         (host === "instagram.com" || host.endsWith(".instagram.com")) &&
         (path.startsWith("/reel/") ||
           path.startsWith("/reels/") ||
+          path.startsWith("/stories/") ||
+          path.startsWith("/s/") ||
+          path.startsWith("/share/") ||
           path.startsWith("/share/reel/") ||
           path.startsWith("/share/p/") ||
           path.startsWith("/p/"))
@@ -806,6 +821,26 @@
         (path === "/watch" || path.startsWith("/shorts/") || path.startsWith("/embed/"))
       ) {
         return "youtube";
+      }
+
+      if (
+        host === "x.com" ||
+        host.endsWith(".x.com") ||
+        host === "twitter.com" ||
+        host.endsWith(".twitter.com")
+      ) {
+        const parts = path.split("/").filter(Boolean);
+        const statusIndex = parts.findIndex((part) => part === "status");
+        const tweetId =
+          statusIndex >= 0
+            ? parts[statusIndex + 1]
+            : parts[0] === "i" && parts[1] === "status"
+              ? parts[2]
+              : "";
+
+        if (/^\d{10,25}$/.test(tweetId || "")) {
+          return "x";
+        }
       }
 
       return null;
@@ -904,7 +939,7 @@
       const url = new URL(value);
       return `${url.hostname}${url.pathname}`;
     } catch (error) {
-      return "Open reel";
+      return "Open source";
     }
   }
 

@@ -23,6 +23,8 @@ const instagramUserAgent =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 const youtubeUserAgent =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
+const xUserAgent =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
 
 let youtubeClientPromise;
 
@@ -213,11 +215,11 @@ app.delete("/api/admin/prompts/:id", async (req, res) => {
 
 app.post("/api/download", async (req, res) => {
   const submittedUrl = typeof req.body?.url === "string" ? req.body.url.trim() : "";
-    const platform = detectSupportedPlatform(submittedUrl);
+  const platform = detectSupportedPlatform(submittedUrl);
 
   if (!platform) {
     return res.status(400).json({
-      error: "Paste a public Instagram reel or YouTube video/Shorts link."
+      error: "Paste a public Instagram reel/story, YouTube video/Shorts, or X video link."
     });
   }
 
@@ -249,7 +251,7 @@ app.post("/api/download", async (req, res) => {
     return res.status(statusCode).json({
       error:
         error.publicMessage ||
-        "We could not fetch this media right now. Try another public Instagram or YouTube URL."
+        "We could not fetch this media right now. Try another public Instagram, YouTube, or X URL."
     });
   }
 });
@@ -313,6 +315,10 @@ async function resolveMediaForPlatform(platform, submittedUrl) {
     return resolveYouTubeMedia(submittedUrl);
   }
 
+  if (platform === "x") {
+    return resolveXMedia(submittedUrl);
+  }
+
   throw createPublicError("That platform is not supported yet.", 400);
 }
 
@@ -328,6 +334,136 @@ async function resolveInstagramMedia(rawUrl) {
   } catch (packageError) {
     return resolveInstagramWithPageMetadata(canonicalUrl, packageError);
   }
+}
+
+async function resolveXMedia(rawUrl) {
+  const tweetId = extractTweetId(rawUrl);
+
+  if (!tweetId) {
+    throw createPublicError("Paste a valid public X/Twitter post URL.", 400);
+  }
+
+  const canonicalUrl = `https://x.com/i/status/${tweetId}`;
+
+  try {
+    return await resolveXWithSyndication(canonicalUrl, tweetId);
+  } catch (syndicationError) {
+    return resolveXWithPageMetadata(canonicalUrl, tweetId, syndicationError);
+  }
+}
+
+async function resolveXWithSyndication(canonicalUrl, tweetId) {
+  const payload = await fetchXSyndicationPayload(tweetId);
+  const video = pickXVideoVariant(payload);
+
+  if (!video?.url) {
+    throw createPublicError(
+      "No downloadable X video was found on this public post.",
+      404
+    );
+  }
+
+  const owner = payload.user?.screen_name || "";
+  const title = payload.text ? truncateText(payload.text, 86) : "X Video";
+  const thumbnail = payload.video?.poster || pickXThumbnail(payload);
+
+  return {
+    platform: "x",
+    canonicalUrl,
+    title,
+    owner,
+    caption: payload.text || "",
+    thumbnail,
+    preview: video.url,
+    video: video.url,
+    audio: null,
+    source: "Resolved directly from X public tweet metadata",
+    message: owner
+      ? `Ready to preview and download from @${owner}.`
+      : "Your X video is ready to preview and download.",
+    fileBase: createFileBase("x", canonicalUrl, owner)
+  };
+}
+
+async function fetchXSyndicationPayload(tweetId) {
+  const urls = [
+    `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&lang=en&token=0`,
+    `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&lang=en`
+  ];
+  let lastError;
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": xUserAgent,
+          Accept: "application/json,text/plain,*/*",
+          Referer: "https://platform.twitter.com/"
+        }
+      });
+
+      if (!response.ok) {
+        lastError = createPublicError("X could not be reached for this post.", 502);
+        continue;
+      }
+
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw createPublicError("X could not be reached for this post.", 502, lastError);
+}
+
+async function resolveXWithPageMetadata(canonicalUrl, tweetId, originalError) {
+  const response = await fetch(canonicalUrl, {
+    headers: {
+      "User-Agent": xUserAgent,
+      Accept: "text/html,application/xhtml+xml"
+    }
+  });
+
+  if (!response.ok) {
+    throw createPublicError("X could not be reached for this post.", 502, originalError);
+  }
+
+  const html = await response.text();
+  const video =
+    readMetaTag(html, "twitter:player:stream") ||
+    readMetaTag(html, "og:video:url") ||
+    readMetaTag(html, "og:video") ||
+    readJsonValue(html, "contentUrl");
+
+  if (!video) {
+    throw createPublicError(
+      "This X post could not be resolved. It may be private, removed, or not contain a downloadable video.",
+      404,
+      originalError
+    );
+  }
+
+  const title = readMetaTag(html, "og:title") || "X Video";
+  const caption = readMetaTag(html, "og:description") || "";
+  const owner = extractOwnerFromText(title, caption);
+  const thumbnail = readMetaTag(html, "og:image") || readJsonValue(html, "thumbnailUrl");
+
+  return {
+    platform: "x",
+    canonicalUrl,
+    title,
+    owner,
+    caption,
+    thumbnail,
+    preview: video,
+    video,
+    audio: null,
+    source: "Resolved from X public page metadata",
+    message: owner
+      ? `Ready to preview and download from @${owner}.`
+      : "Your X video is ready to preview and download.",
+    fileBase: createFileBase("x", canonicalUrl, owner || tweetId)
+  };
 }
 
 async function resolveInstagramUrl(rawUrl) {
@@ -630,6 +766,13 @@ function createUpstreamHeaders(platform) {
     };
   }
 
+  if (platform === "x") {
+    return {
+      "User-Agent": xUserAgent,
+      Referer: "https://x.com/"
+    };
+  }
+
   return {};
 }
 
@@ -666,6 +809,9 @@ function detectSupportedPlatform(value) {
       (host === "instagram.com" || host.endsWith(".instagram.com")) &&
       (pathName.startsWith("/reel/") ||
         pathName.startsWith("/reels/") ||
+        pathName.startsWith("/stories/") ||
+        pathName.startsWith("/s/") ||
+        pathName.startsWith("/share/") ||
         pathName.startsWith("/share/reel/") ||
         pathName.startsWith("/share/p/") ||
         pathName.startsWith("/p/"))
@@ -686,11 +832,51 @@ function detectSupportedPlatform(value) {
         return "youtube";
       }
     }
+
+    if (
+      host === "x.com" ||
+      host.endsWith(".x.com") ||
+      host === "twitter.com" ||
+      host.endsWith(".twitter.com")
+    ) {
+      if (extractTweetId(value)) {
+        return "x";
+      }
+    }
   } catch (error) {
     return null;
   }
 
   return null;
+}
+
+function extractTweetId(value) {
+  try {
+    const url = new URL(value.trim());
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (
+      host !== "x.com" &&
+      !host.endsWith(".x.com") &&
+      host !== "twitter.com" &&
+      !host.endsWith(".twitter.com")
+    ) {
+      return "";
+    }
+
+    const pathParts = url.pathname.split("/").filter(Boolean);
+    const statusIndex = pathParts.findIndex((part) => part.toLowerCase() === "status");
+    const id =
+      statusIndex >= 0
+        ? pathParts[statusIndex + 1]
+        : pathParts[0]?.toLowerCase() === "i" && pathParts[1]?.toLowerCase() === "status"
+          ? pathParts[2]
+          : "";
+
+    return /^\d{10,25}$/.test(id || "") ? id : "";
+  } catch (error) {
+    return "";
+  }
 }
 
 function extractYouTubeVideoId(value) {
@@ -736,6 +922,57 @@ function isYouTubeShortsUrl(value) {
   }
 }
 
+function pickXVideoVariant(payload) {
+  const variants = []
+    .concat(
+      Array.isArray(payload?.video?.variants)
+        ? payload.video.variants.map((variant) => ({
+            url: variant.src,
+            contentType: variant.type,
+            bitrate: variant.bitrate
+          }))
+        : []
+    )
+    .concat(
+      Array.isArray(payload?.mediaDetails)
+        ? payload.mediaDetails.flatMap((media) =>
+            Array.isArray(media?.video_info?.variants) ? media.video_info.variants : []
+          )
+        : []
+    )
+    .filter((variant) => {
+      const contentType = String(variant?.content_type || variant?.contentType || "");
+      const url = String(variant?.url || "");
+      return url && contentType.includes("video/mp4");
+    });
+
+  return variants
+    .map((variant) => ({
+      url: variant.url,
+      bitrate: Number(variant.bitrate) || 0
+    }))
+    .sort((left, right) => right.bitrate - left.bitrate)[0] || null;
+}
+
+function pickXThumbnail(payload) {
+  const candidates = []
+    .concat(payload?.mediaDetails || [])
+    .map((media) => media?.media_url_https)
+    .filter(Boolean);
+
+  return candidates[0] || null;
+}
+
+function truncateText(value, maxLength) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, Math.max(0, maxLength - 1)).trim()}...`;
+}
+
 function createFileBase(platform, sourceUrl, owner) {
   const mediaId = getMediaId(sourceUrl);
   const ownerPart = sanitizeFileSegment(owner || platform);
@@ -745,6 +982,10 @@ function createFileBase(platform, sourceUrl, owner) {
 function getMediaId(sourceUrl) {
   if (detectSupportedPlatform(sourceUrl) === "youtube") {
     return sanitizeFileSegment(extractYouTubeVideoId(sourceUrl) || "video");
+  }
+
+  if (detectSupportedPlatform(sourceUrl) === "x") {
+    return sanitizeFileSegment(extractTweetId(sourceUrl) || "video");
   }
 
   try {
@@ -806,12 +1047,29 @@ function getFileExtension(kind, contentType, mediaUrl) {
 }
 
 function readMetaTag(html, propertyName) {
+  const metaTags = String(html || "").match(/<meta\b[^>]*>/gi) || [];
+
+  for (const tag of metaTags) {
+    const property =
+      readHtmlAttribute(tag, "property") ||
+      readHtmlAttribute(tag, "name") ||
+      readHtmlAttribute(tag, "itemprop");
+
+    if (property === propertyName) {
+      return decodeHtmlEntities(readHtmlAttribute(tag, "content"));
+    }
+  }
+
+  return "";
+}
+
+function readHtmlAttribute(tag, attributeName) {
   const expression = new RegExp(
-    `<meta[^>]+(?:property|name)=["']${escapeRegex(propertyName)}["'][^>]+content=["']([^"']+)["'][^>]*>`,
+    `\\b${escapeRegex(attributeName)}\\s*=\\s*(["'])(.*?)\\1`,
     "i"
   );
-  const match = html.match(expression);
-  return match ? decodeHtmlEntities(match[1]) : "";
+  const match = String(tag || "").match(expression);
+  return match ? match[2] : "";
 }
 
 function readJsonValue(html, key) {

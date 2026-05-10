@@ -22,3 +22,23 @@
   from = "/downloader"
   to = "/downloader.html"
   status = 200
+
+[[redirects]]
+  from = "/instagram-reels-download"
+  to = "/downloader.html"
+  status = 200
+
+[[redirects]]
+  from = "/insta-reels-download"
+  to = "/downloader.html"
+  status = 200
+
+[[redirects]]
+  from = "/instagram-story-download"
+  to = "/downloader.html"
+  status = 200
+
+[[redirects]]
+  from = "/x-video-download"
+  to = "/downloader.html"
+  status = 200
