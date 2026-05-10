@@ -225,10 +225,23 @@ app.post("/api/download", async (req, res) => {
 
   try {
     const resolved = await resolveMediaForPlatform(platform, submittedUrl);
-    const mediaToken = createMediaToken({
+    const baseTokenPayload = {
       platform: resolved.platform,
-      canonicalUrl: resolved.canonicalUrl
-    });
+      canonicalUrl: resolved.canonicalUrl,
+      fileBase: resolved.fileBase
+    };
+    const thumbnailToken = resolved.thumbnail
+      ? createMediaToken({ ...baseTokenPayload, thumbnail: resolved.thumbnail })
+      : null;
+    const previewToken = resolved.preview
+      ? createMediaToken({ ...baseTokenPayload, preview: resolved.preview })
+      : null;
+    const videoToken = resolved.video
+      ? createMediaToken({ ...baseTokenPayload, video: resolved.video })
+      : null;
+    const audioToken = resolved.audio
+      ? createMediaToken({ ...baseTokenPayload, audio: resolved.audio })
+      : null;
 
     return res.json({
       platform: resolved.platform,
@@ -238,10 +251,10 @@ app.post("/api/download", async (req, res) => {
       caption: resolved.caption,
       source: resolved.source,
       message: resolved.message,
-      thumbnailPath: resolved.thumbnail ? `/api/media/thumbnail?token=${encodeURIComponent(mediaToken)}` : null,
-      previewPath: resolved.preview ? `/api/media/preview?token=${encodeURIComponent(mediaToken)}` : null,
-      videoDownloadPath: resolved.video ? `/api/media/video?token=${encodeURIComponent(mediaToken)}` : null,
-      audioDownloadPath: resolved.audio ? `/api/media/audio?token=${encodeURIComponent(mediaToken)}` : null,
+      thumbnailPath: thumbnailToken ? `/api/media/thumbnail?token=${encodeURIComponent(thumbnailToken)}` : null,
+      previewPath: previewToken ? `/api/media/preview?token=${encodeURIComponent(previewToken)}` : null,
+      videoDownloadPath: videoToken ? `/api/media/video?token=${encodeURIComponent(videoToken)}` : null,
+      audioDownloadPath: audioToken ? `/api/media/audio?token=${encodeURIComponent(audioToken)}` : null,
       videoFilename: resolved.video ? `${resolved.fileBase}.mp4` : null,
       audioFilename: resolved.audio ? `${resolved.fileBase}.mp3` : null
     });
@@ -267,11 +280,12 @@ app.get("/api/media/:kind", async (req, res) => {
     return res.status(404).send("This media link expired. Please fetch the media again.");
   }
 
-  let media;
-  try {
-    media = await resolveMediaForPlatform(tokenPayload.platform, tokenPayload.canonicalUrl);
-  } catch (error) {
-    return res.status(404).send("That media could not be reloaded. Please fetch it again.");
+  const media = hasTokenMediaTargets(tokenPayload)
+    ? tokenPayload
+    : await reloadMediaFromToken(tokenPayload, res);
+
+  if (!media) {
+    return;
   }
 
   const targetUrl = getSessionMediaTarget(media, kind);
@@ -688,11 +702,29 @@ function createMediaToken(payload) {
     JSON.stringify({
       platform: payload.platform,
       canonicalUrl: payload.canonicalUrl,
+      fileBase: payload.fileBase,
+      thumbnail: payload.thumbnail || null,
+      preview: payload.preview || null,
+      video: payload.video || null,
+      audio: payload.audio || null,
       exp: Date.now() + mediaTokenTtlMs
     })
   ).toString("base64url");
   const signature = createHmac("sha256", mediaTokenSecret).update(body).digest("base64url");
   return `${body}.${signature}`;
+}
+
+function hasTokenMediaTargets(payload) {
+  return Boolean(payload?.thumbnail || payload?.preview || payload?.video || payload?.audio);
+}
+
+async function reloadMediaFromToken(tokenPayload, res) {
+  try {
+    return await resolveMediaForPlatform(tokenPayload.platform, tokenPayload.canonicalUrl);
+  } catch (error) {
+    res.status(404).send("That media could not be reloaded. Please fetch it again.");
+    return null;
+  }
 }
 
 function readMediaToken(token) {
@@ -755,6 +787,7 @@ function createUpstreamHeaders(platform) {
   if (platform === "instagram") {
     return {
       "User-Agent": instagramUserAgent,
+      Accept: "video/mp4,video/*,image/*,*/*",
       Referer: "https://www.instagram.com/"
     };
   }
@@ -762,6 +795,7 @@ function createUpstreamHeaders(platform) {
   if (platform === "youtube") {
     return {
       "User-Agent": youtubeUserAgent,
+      Accept: "video/mp4,video/*,audio/*,*/*",
       Referer: "https://www.youtube.com/"
     };
   }
@@ -769,6 +803,7 @@ function createUpstreamHeaders(platform) {
   if (platform === "x") {
     return {
       "User-Agent": xUserAgent,
+      Accept: "video/mp4,video/*,image/*,*/*",
       Referer: "https://x.com/"
     };
   }
