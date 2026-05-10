@@ -294,6 +294,10 @@ app.get("/api/media/:kind", async (req, res) => {
     return res.status(404).send("That media file is not available for this item.");
   }
 
+  if (shouldRedirectResolvedMedia(media.platform)) {
+    return redirectToResolvedMedia(res, targetUrl);
+  }
+
   try {
     await proxyRemoteMedia(req, res, {
       url: targetUrl,
@@ -303,7 +307,7 @@ app.get("/api/media/:kind", async (req, res) => {
     });
   } catch (error) {
     if (!res.headersSent) {
-      return res.status(502).send("Unable to stream that file right now.");
+      return redirectToResolvedMedia(res, targetUrl);
     }
 
     res.destroy(error);
@@ -724,6 +728,28 @@ async function reloadMediaFromToken(tokenPayload, res) {
   } catch (error) {
     res.status(404).send("That media could not be reloaded. Please fetch it again.");
     return null;
+  }
+}
+
+function shouldRedirectResolvedMedia(platform) {
+  return platform === "instagram" || platform === "x";
+}
+
+function redirectToResolvedMedia(res, targetUrl) {
+  if (!isSafeRemoteMediaUrl(targetUrl)) {
+    return res.status(502).send("Unable to stream that file right now.");
+  }
+
+  res.setHeader("Cache-Control", "no-store");
+  return res.redirect(302, targetUrl);
+}
+
+function isSafeRemoteMediaUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch (error) {
+    return false;
   }
 }
 
